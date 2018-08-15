@@ -15,7 +15,7 @@ except ImportError:
     HAS_OPENEYE = False
 
 
-def to_canonical_smiles(molecule, isomeric=True, explicit_hydrogen=True, mapped=True, canonicalization='openeye'):
+def to_canonical_smiles(molecule, canonicalization='openeye'):
     """
     Generate canonical SMILES. The default options will generate isomeric, explicit hydrogen mapped SMILES with
     OpenEye's canonicalization algorithm.
@@ -48,7 +48,7 @@ def to_canonical_smiles(molecule, isomeric=True, explicit_hydrogen=True, mapped=
         smiles['canonical_isomeric_smiles'] = to_canonical_smiles_oe(molecule, isomeric=True, explicit_hydrogen=False,
                                                                       mapped=False)
         smiles['canonical_isomeric_explicit_hydrogen_smiles'] = to_canonical_smiles_oe(molecule, isomeric=True,
-                                                                                        explicit_hydrogen=True,
+                                                                                       explicit_hydrogen=True,
                                                                                         mapped=False)
         smiles['canonical_explicit_hydrogen_smiles'] = to_canonical_smiles_oe(molecule, isomeric=False,
                                                                                explicit_hydrogen=True, mapped=False)
@@ -105,19 +105,18 @@ def to_canonical_smiles_rd(molecule, isomeric, explicit_hydrogen, mapped):
     molecule = deepcopy(molecule)
     # Check molecule instance
     if not isinstance(molecule, rd.Chem.rdchem.Mol):
+        warnings.warn("molecule should be rdkit molecule. Converting to rdkit molecule", UserWarning)
         # Check if OpenEye Mol and convert to RDKit molecule
         if HAS_OPENEYE and isinstance(molecule, openeye.OEMol):
             # Convert OpenEye Mol to RDKit molecule
             molecule = rd.Chem.MolFromSmiles(openeye.oechem.OEMolToSmiles(molecule))
         else:
             raise RuntimeError('Molecule needs to be an RDKit molecule or you must have OpenEye installed')
+    molecule = rd.Chem.MolFromSmiles(rd.Chem.MolToSmiles(molecule, canonical=True))
 
     if explicit_hydrogen:
         # Add explicit hydrogens
         molecule = rd.Chem.AddHs(molecule)
-        print("Check explicit hydrogen bonds")
-        for bond in molecule.GetBonds():
-            print(bond.GetStereo())
 
     if isomeric:
         # Make sure molecule has isomeric information
@@ -133,13 +132,9 @@ def to_canonical_smiles_rd(molecule, isomeric, explicit_hydrogen, mapped):
 
         # Find potential stereo bonds and set to E-isomer if unspecified
         rd.Chem.FindPotentialStereoBonds(molecule)
-        print("finding stereo bonds")
         for bond in molecule.GetBonds():
-            print(bond.GetStereo())
             if bond.GetStereo() == rd.Chem.BondStereo.STEREOANY:
-                print(bond)
                 bond.SetStereo(rd.Chem.BondStereo.STEREOE)
-                print(bond.GetStereo())
 
     # Get canonical order for map
     if mapped:
@@ -177,10 +172,10 @@ def to_canonical_smiles_oe(molecule, isomeric, explicit_hydrogen, mapped):
 
     # check molecule
     if not isinstance(molecule, oechem.OEMol):
-        warnings.warn("molecule must be OEMol. Converring to OEMol")
+        warnings.warn("molecule must be OEMol. Converting to OEMol", UserWarning)
         rd_mol = molecule
         molecule = oechem.OEMol()
-        oechem.ParseSmiles(rd.Chem.MolToSmiles(rd_mol), molecule)
+        oechem.OEParseSmiles(molecule, rd.Chem.MolToSmiles(rd_mol))
     molecule = oechem.OEMol(molecule)
 
     if explicit_hydrogen:

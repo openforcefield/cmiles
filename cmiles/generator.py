@@ -112,7 +112,6 @@ def to_canonical_smiles_rd(molecule, isomeric, explicit_hydrogen, mapped):
             molecule = rd.Chem.MolFromSmiles(openeye.oechem.OEMolToSmiles(molecule))
         else:
             raise RuntimeError('Molecule needs to be an RDKit molecule or you must have OpenEye installed')
-    molecule = rd.Chem.MolFromSmiles(rd.Chem.MolToSmiles(molecule, canonical=True))
 
     if explicit_hydrogen:
         # Add explicit hydrogens
@@ -140,7 +139,7 @@ def to_canonical_smiles_rd(molecule, isomeric, explicit_hydrogen, mapped):
     if mapped:
         ranks = list(rd.Chem.CanonicalRankAtoms(molecule, breakTies=True))
         for i, j in enumerate(ranks):
-            molecule.GetAtomWithIdx(j).SetAtomMapNum(i+1)
+            molecule.GetAtomWithIdx(i).SetAtomMapNum(j+1)
 
     smiles = rd.Chem.MolToSmiles(molecule, allHsExplicit=explicit_hydrogen, isomericSmiles=isomeric, canonical=True)
     return smiles

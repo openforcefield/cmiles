@@ -166,8 +166,8 @@ def to_canonical_smiles_oe(molecule, isomeric, explicit_hydrogen, mapped):
     if not HAS_OPENEYE:
         raise ImportError("OpenEye is not installed. You can use the canonicalization='rdkit' to use the RDKit backend"
                            "The Conda recipe for cmiles installs rdkit")
-    if openeye.__version__ != '2018.Feb.b6':
-        raise RuntimeError("Must use OpeneEye version 2018.Feb.b6")
+    if openeye.__version__ != '2018.Feb.1':
+        raise RuntimeError("Must use OpeneEye version 2018.Feb.1")
     from openeye import oechem
 
     # check molecule

@@ -186,7 +186,7 @@ def test_openeye_canonical(smiles_input, oe_can_expected):
 
 def test_oe_version():
     """Test openeye version"""
-    assert cmiles.openeye.__version__ == '2018.Feb.b6'
+    assert cmiles.openeye.__version__ == '2018.Feb.1'
 
 
 def test_rd_version():

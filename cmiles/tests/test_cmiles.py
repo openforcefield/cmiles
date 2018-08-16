@@ -222,7 +222,12 @@ def test_oe_cmiles():
                        'provenance': 'cmiles_0.0.0+1.geb7d850.dirty_openeye_2018.Feb.b6'}
     molecule = oechem.OEMol()
     oechem.OEParseSmiles(molecule, 'CN(C)CC=CC(=O)Nc1cc2c(cc1OC3CCOC3)ncnc2Nc4ccc(c(c4)Cl)F')
-    assert cmiles.to_canonical_smiles(molecule) == expected_output
+    output = cmiles.to_canonical_smiles(molecule, canonicalization='openeye')
+    assert expected_output['canonical_smiles'] == output['canonical_smiles']
+    assert expected_output['canonical_isomeric_smiles'] == output['canonical_isomeric_smiles']
+    assert expected_output['canonical_isomeric_explicit_hydrogen_smiles'] == output['canonical_isomeric_explicit_hydrogen_smiles']
+    assert expected_output['canonical_explicit_hydrogen_smiles'] == output['canonical_explicit_hydrogen_smiles']
+    assert expected_output['canonical_isomeric_explicit_hydrogen_mapped_smiles'] == output['canonical_isomeric_explicit_hydrogen_mapped_smiles']
 
 
 def test_rd_cmiles():

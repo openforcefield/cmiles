@@ -16,7 +16,7 @@ requirements:
   run:
     - python
     - rdkit=2018.03.3
-    - openeye-toolkits=2018.Feb.b6
+    - openeye-toolkits=2018.2.1
 
 test:
   requires:

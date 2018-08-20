@@ -1,5 +1,4 @@
 """
-generator.py
 Generate canonical, isomeric, explicit hydrogen, mapped SMILES
 
 """
@@ -17,28 +16,55 @@ except ImportError:
 
 def to_canonical_smiles(molecule, canonicalization='openeye'):
     """
-    Generate canonical SMILES. The default options will generate isomeric, explicit hydrogen mapped SMILES with
-    OpenEye's canonicalization algorithm.
+    Generate a dictionary of canonical SMILES.
 
-    When using rdkit's canonicalization, chiral centers will always be assigned the CW flag (Clockwise) and stereo bonds
-    will be assigned E-isomer.
+    This dictionary contains:
+    1. canonical SMILES
+    2. canonical, isomeric SMILES
+    3. canonical, explicit hydrogen SMILES
+    4. canonical, isomeric, explicit hydrogen SMILES
+    5. canonical, isomeric, explicit hydrogen, mapped SMILES
+
+    The map index on the mapped SMILES is the rank order of the atoms. This SMILES can be used as a SMARTS query for
+    a molecule generated from any SMILES representing the same molecule. Using a substrucutre search, you can find the
+    mapping of the atom index to the map index in the mapped SMILES. This can be used to ensure all atoms in the same
+    molecule have the same map indices.
+
+    For example, methanol (`CO`) will become `[H:3][C:1]([H:4])([H:5])[O:2][H:6]`. Using substructure search on any
+    methanol openeye or rdkit molecule, you will get a mapping from the atom map to the atom index.
+
+    Below is some code using OpenEye to get the mapping:
+
+    from openeye import oechem
+
+    # Set up the substructure search
+    ss = oechem.OESubSearch(mapped_smiles)
+    oechem.OEPrepareSearch(molecule, ss)
+    ss.SetMaxMatches(1)
+
+    atom_map = {}
+    for match in matches:
+        for ma in match.GetAtoms():
+            atom_map[ma.pattern.GetMapIdx()] = ma.target.GetIdx()
+
+
+    The default option uses OpenEye canonicalization to generate these SMILES, but you can also use rdkit.
+
 
     Parameters
     ----------
-    molecule:
-    isomeric: bool, optional, default True
-        If true, SMILES will have stereochemistry specified if the molecule has stereochemical information
-    explicit_h: bool, optional, default True
-        If True, SMILES will have explicit hydrogen.
-    mapped: bool, optional, default True
-        If True, SMILES will have map of index of atom (+1 because the map is 1 indexed)
+    molecule: openeye or rdkit molecule to generate canonical SMILES.
+        Use an openeye molecule if using openey canonicalization and rdkit molecule if you are using rdkit canonicalization
+
     canonicalization: str, optional, default 'openeye'
-        The canonicalization backend to use for generating SMILES. Choice of 'openeye' or 'rdkit'
+        The canonicalization backend to use for generating SMILES. Choice of 'openeye' or 'rdkit'.
+        The canonicalization algorithms are different so the output will be different.
 
     Returns
     -------
-    cmiles: str
+    cmiles: dict
         The canonical SMILES
+        The provenance key maps to the cmiles version and openeye or rdkit version used.
 
     """
     smiles = {}
@@ -85,11 +111,13 @@ def to_canonical_smiles_rd(molecule, isomeric, explicit_hydrogen, mapped):
     molecule: RDKit Chem.rdchem.Mol instance
         The molecule to generate SMILES for
     isomeric: bool
-        If True, SMILES will have isomeric information if molecule has isomeric information.
-    explicit_h: bool
+        If True, SMILES will have isomeric information. If molecule already has isomeric information, this will be retained.
+        If no isomeric information exists, this function will perceive it and assign the CW (clockwise) flag for chiral
+        centers and the E-isomer for stereo bonds.
+    explicit_hydrogen: bool
         If True, SMILES will have explicit hydrogens
     mapped: bool
-        If True, SMILES will have map indices
+        If True, SMILES will have map indices. (+1 because the map is 1 indexed)
 
     Returns
     -------
@@ -148,18 +176,23 @@ def to_canonical_smiles_rd(molecule, isomeric, explicit_hydrogen, mapped):
 def to_canonical_smiles_oe(molecule, isomeric, explicit_hydrogen, mapped):
     """
     Generate canonical SMILES with OpenEye.
-    If Isomeric is True, this function will check if a conformer exists. If there is not conformer, oeomega will be used
+    If Isomeric is True, this function will check if a conformer exists. If there is no conformer, oeomega will be used
     to generate a conformer so that stereochemistry can be perceived from the 3D conformation.
 
     Parameters
     ----------
-    molecule
-    isomeric
-    explicit_hydrogen
-    mapped
+
+    molecule: oechem.OEMol
+    isomeric: bool
+        If True, SMILES will include chirality and stereo bonds
+    explicit_hydrogen: bool
+        If True, SMILES will include explicit hydrogen
+    mapped: bool
+        If True, will include map indices (In order of OpenEye omega canonical ordering)
 
     Returns
     -------
+    smiles str
 
     """
     if not HAS_OPENEYE:

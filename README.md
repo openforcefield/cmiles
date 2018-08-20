@@ -38,7 +38,22 @@ for match in matches:
 
 The `atom_map` dictionary can then be used to order the atoms in the xyz
 coordinates. If the same mapped SMILES is used, the order of will always
-be the same for that molecule 
+be the same for that molecule.
+
+#### How to use cmiles
+`cmiles` has one main function, `to_canonical_smiles(molecule)`. This 
+function returns a dictionary with 5 SMILES generated with either OpenEye
+or RDKit. The 5 strings are:
+
+1. Canonical SMILES
+2. Canonical, isomeric SMILES
+3. Canonical, isomeric, explicit hydrogen SMILES
+4. Canonical, explicit hydrogen SMILES
+5. Canonical, isomeric, explicit hydrogen, mapped SMILES.
+
+If you only want one SMILES, you can use `to_canonical_smiles_oe` or 
+`to_canonical_smiles_rd` with the appropriate options to get the SMILES
+with either OpenEye or RDKit canonicalization.
 
 ### Copyright
 

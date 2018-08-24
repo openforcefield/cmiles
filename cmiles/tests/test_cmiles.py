@@ -184,15 +184,6 @@ def test_openeye_canonical(smiles_input, oe_can_expected):
         assert cmiles.to_canonical_smiles_oe(oe_mol, isomeric=False, mapped=False, explicit_hydrogen=False) == o
 
 
-def test_oe_version():
-    """Test openeye version"""
-    assert cmiles.openeye.__version__ == '2018.Feb.1'
-
-
-def test_rd_version():
-    assert cmiles.rd.__version__ == '2018.03.3'
-
-
 def test_oe_mol():
     """test warning when converting rdmol to oemol"""
     molecule = cmiles.rd.Chem.MolFromSmiles('CC(c1c(ccc(c1Cl)F)Cl)OC')

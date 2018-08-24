@@ -67,6 +67,9 @@ def to_canonical_smiles(molecule, canonicalization='openeye'):
         The provenance key maps to the cmiles version and openeye or rdkit version used.
 
     """
+    # check input and convert to oe or rdkit mol
+    molecule = c.utils.load_molecule(molecule)
+    print(molecule)
     smiles = {}
     if canonicalization == 'openeye':
         smiles['canonical_smiles'] = to_canonical_smiles_oe(molecule, isomeric=False, explicit_hydrogen=False,
@@ -127,8 +130,8 @@ def to_canonical_smiles_rd(molecule, isomeric, explicit_hydrogen, mapped):
     """
     # Check RDKit version
     import rdkit
-    if rdkit.__version__ != '2018.03.3':
-        raise RuntimeError("RDKit version must be 2018.03.3")
+    # if rdkit.__version__ != '2018.03.3':
+    #     raise RuntimeError("RDKit version must be 2018.03.3")
 
     molecule = deepcopy(molecule)
     # Check molecule instance
@@ -136,6 +139,7 @@ def to_canonical_smiles_rd(molecule, isomeric, explicit_hydrogen, mapped):
         warnings.warn("molecule should be rdkit molecule. Converting to rdkit molecule", UserWarning)
         # Check if OpenEye Mol and convert to RDKit molecule
         if HAS_OPENEYE and isinstance(molecule, openeye.OEMol):
+            print(HAS_OPENEYE)
             # Convert OpenEye Mol to RDKit molecule
             molecule = rd.Chem.MolFromSmiles(openeye.oechem.OEMolToSmiles(molecule))
         else:
@@ -198,12 +202,12 @@ def to_canonical_smiles_oe(molecule, isomeric, explicit_hydrogen, mapped):
     if not HAS_OPENEYE:
         raise ImportError("OpenEye is not installed. You can use the canonicalization='rdkit' to use the RDKit backend"
                            "The Conda recipe for cmiles installs rdkit")
-    if openeye.__version__ != '2018.Feb.1':
-        raise RuntimeError("Must use OpeneEye version 2018.Feb.1")
+    # if openeye.__version__ != '2018.Feb.1':
+    #     raise RuntimeError("Must use OpeneEye version 2018.Feb.1")
     from openeye import oechem
 
     # check molecule
-    if not isinstance(molecule, oechem.OEMol):
+    if not isinstance(molecule, (oechem.OEMol, oechem.OEGraphMol, oechem.OEMolBase)):
         warnings.warn("molecule must be OEMol. Converting to OEMol", UserWarning)
         rd_mol = molecule
         molecule = oechem.OEMol()

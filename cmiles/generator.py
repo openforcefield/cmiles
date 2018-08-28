@@ -69,7 +69,6 @@ def to_canonical_smiles(molecule, canonicalization='openeye'):
     """
     # check input and convert to oe or rdkit mol
     molecule = c.utils.load_molecule(molecule)
-    print(molecule)
     smiles = {}
     if canonicalization == 'openeye':
         smiles['canonical_smiles'] = to_canonical_smiles_oe(molecule, isomeric=False, explicit_hydrogen=False,
@@ -128,20 +127,16 @@ def to_canonical_smiles_rd(molecule, isomeric, explicit_hydrogen, mapped):
         The canonical SMILES
 
     """
-    # Check RDKit version
-    import rdkit
-    # if rdkit.__version__ != '2018.03.3':
-    #     raise RuntimeError("RDKit version must be 2018.03.3")
-
     molecule = deepcopy(molecule)
     # Check molecule instance
     if not isinstance(molecule, rd.Chem.rdchem.Mol):
         warnings.warn("molecule should be rdkit molecule. Converting to rdkit molecule", UserWarning)
         # Check if OpenEye Mol and convert to RDKit molecule
         if HAS_OPENEYE and isinstance(molecule, openeye.OEMol):
-            print(HAS_OPENEYE)
             # Convert OpenEye Mol to RDKit molecule
             molecule = rd.Chem.MolFromSmiles(openeye.oechem.OEMolToSmiles(molecule))
+            if molecule is None:
+                raise RuntimeError("RDKit could not parse SMILES")
         else:
             raise RuntimeError('Molecule needs to be an RDKit molecule or you must have OpenEye installed')
 
@@ -177,7 +172,7 @@ def to_canonical_smiles_rd(molecule, isomeric, explicit_hydrogen, mapped):
     return smiles
 
 
-def to_canonical_smiles_oe(molecule, isomeric, explicit_hydrogen, mapped):
+def to_canonical_smiles_oe(molecule, isomeric, explicit_hydrogen, mapped, generate_conformer=True):
     """
     Generate canonical SMILES with OpenEye.
     If Isomeric is True, this function will check if a conformer exists. If there is no conformer, oeomega will be used
@@ -193,6 +188,10 @@ def to_canonical_smiles_oe(molecule, isomeric, explicit_hydrogen, mapped):
         If True, SMILES will include explicit hydrogen
     mapped: bool
         If True, will include map indices (In order of OpenEye omega canonical ordering)
+    generate_conformer: bool, optional. Default True
+        Generating conformer is needed to infer stereochemistry if SMILES does not have stereochemistry specified. Sometimes,
+        however, this can be very slow because the molecule has many rotatable bonds. Then it is recommended to turn
+        off generate_conformer but the stereochemistry might not be specified in the isomeric SMILES
 
     Returns
     -------
@@ -202,8 +201,7 @@ def to_canonical_smiles_oe(molecule, isomeric, explicit_hydrogen, mapped):
     if not HAS_OPENEYE:
         raise ImportError("OpenEye is not installed. You can use the canonicalization='rdkit' to use the RDKit backend"
                            "The Conda recipe for cmiles installs rdkit")
-    # if openeye.__version__ != '2018.Feb.1':
-    #     raise RuntimeError("Must use OpeneEye version 2018.Feb.1")
+
     from openeye import oechem
 
     # check molecule
@@ -218,11 +216,12 @@ def to_canonical_smiles_oe(molecule, isomeric, explicit_hydrogen, mapped):
         oechem.OEAddExplicitHydrogens(molecule)
 
     # Generate conformer for canonical order
-    try:
-        molecule = c.utils.generate_conformers(molecule, max_confs=1, strict_stereo=False, strict_types=False)
-    except RuntimeError:
-        warnings.warn("Omega failed to generate a conformer. Smiles may be missing stereochemistry and the map index will"
-                      "not be in canonical order.")
+    if generate_conformer:
+        try:
+            molecule = c.utils.generate_conformers(molecule, max_confs=1, strict_stereo=True, strict_types=False)
+        except RuntimeError:
+            warnings.warn("Omega failed to generate a conformer. Smiles may be missing stereochemistry and the map index will"
+                          "not be in canonical order.")
 
     if isomeric:
         oechem.OEPerceiveChiral(molecule)

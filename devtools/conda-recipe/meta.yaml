@@ -15,8 +15,8 @@ requirements:
 
   run:
     - python
-    - rdkit=2018.03.3
-    - openeye-toolkits=2018.2.1
+    - rdkit
+    - openeye-toolkits
 
 test:
   requires:
@@ -25,5 +25,5 @@ test:
     - cmiles
 
 about:
-  home: add_url_here
+  home: https://github.com/openforcefield/cmiles
   license: MIT License

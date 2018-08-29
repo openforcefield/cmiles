@@ -5,6 +5,7 @@ import os
 import rdkit
 from rdkit import Chem
 
+
 def generate_conformers(molecule, max_confs=800, strict_stereo=True, ewindow=15.0, rms_threshold=1.0, strict_types=True,
                         copy=True, canon_order=True):
     """Generate conformations for the supplied molecule
@@ -61,7 +62,7 @@ def generate_conformers(molecule, max_confs=800, strict_stereo=True, ewindow=15.
     return molcopy
 
 
-def load_molecule(inp_molecule):
+def load_molecule(inp_molecule, backend='openeye'):
     """
     Load molecule. Input is very permissive. Can use SMILES, SMARTS, and file formats that OpenEye or RDKit can parse.
 
@@ -88,7 +89,7 @@ def load_molecule(inp_molecule):
         ext = _get_extension(inp_molecule)
         if not ext:
             # string is probably SMILES
-            if has_openeye:
+            if has_openeye and backend=='openeye':
                 molecule = oechem.OEMol()
                 if not oechem.OESmilesToMol(molecule, inp_molecule):
                     raise Warning("Could not parse molecule")
@@ -109,10 +110,8 @@ def load_molecule(inp_molecule):
                 molecule = _EXT_DISPATCH_TABLE[ext](inp_molecule)
             except KeyError:
                 raise KeyError("Could not parse {}".format(ext))
-        print(molecule)
         return molecule
     if isinstance(inp_molecule, rdkit.Chem.rdchem.Mol):
-        print("rdmol")
         return inp_molecule
     if isinstance(inp_molecule, (oechem.OEMol, oechem.OEGraphMol, oechem.OEMolBase)):
         return oechem.OEMol(inp_molecule)

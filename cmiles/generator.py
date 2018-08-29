@@ -68,7 +68,7 @@ def to_canonical_smiles(molecule, canonicalization='openeye'):
 
     """
     # check input and convert to oe or rdkit mol
-    molecule = c.utils.load_molecule(molecule)
+    molecule = c.utils.load_molecule(molecule, backend=canonicalization)
     smiles = {}
     if canonicalization == 'openeye':
         smiles['canonical_smiles'] = to_canonical_smiles_oe(molecule, isomeric=False, explicit_hydrogen=False,
@@ -218,7 +218,7 @@ def to_canonical_smiles_oe(molecule, isomeric, explicit_hydrogen, mapped, genera
     # Generate conformer for canonical order
     if generate_conformer:
         try:
-            molecule = c.utils.generate_conformers(molecule, max_confs=1, strict_stereo=True, strict_types=False)
+            molecule = c.utils.generate_conformers(molecule, max_confs=1, strict_stereo=False, strict_types=False)
         except RuntimeError:
             warnings.warn("Omega failed to generate a conformer. Smiles may be missing stereochemistry and the map index will"
                           "not be in canonical order.")

@@ -6,6 +6,7 @@ Unit and regression test for the cmiles package.
 import cmiles
 import pytest
 import sys
+from .utils import get_fn, get_smiles_lists
 
 rdkit_missing = False
 try:
@@ -279,3 +280,40 @@ def test_initial_iso():
     cmiles_2 = cmiles.to_canonical_smiles(rd_mol_2, canonicalization='rdkit')
     assert cmiles_1['canonical_smiles'] == cmiles_2['canonical_smiles']
     assert cmiles_1['canonical_isomeric_smiles'] != cmiles_2['canonical_isomeric_smiles']
+
+
+@pytest.mark.parametrize("input, output", get_smiles_lists(get_fn('drug_bank_sm.smi'), get_fn('drug_bank_mapped_smi_rd.smi')))
+def test_drug_bank_rd(input, output):
+    """
+
+    Parameters
+    ----------
+    input
+    output
+
+    Returns
+    -------
+
+    """
+
+    mol = Chem.MolFromSmiles(input)
+    assert cmiles.generator.to_canonical_smiles_rd(mol, mapped=True, isomeric=True, explicit_hydrogen=True) == output
+
+
+@pytest.mark.parametrize("input, output", get_smiles_lists(get_fn('drug_bank_sm.smi'), get_fn('drug_bank_mapped_smi_oe.smi')))
+def test_drug_bank_oe(input, output):
+    """
+
+    Parameters
+    ----------
+    input
+    output
+
+    Returns
+    -------
+
+    """
+    mol = oechem.OEMol()
+    oechem.OEParseSmiles(mol, input)
+    assert cmiles.generator.to_canonical_smiles_oe(mol, mapped=True, isomeric=True, explicit_hydrogen=True,
+                                                   generate_conformer=False) == output

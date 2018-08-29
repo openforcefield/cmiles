@@ -58,7 +58,7 @@ install:
 
 
 script:
-  - pytest -v --cov=cmiles cmiles/tests/
+  - pytest --cov=cmiles cmiles/tests/
 
 notifications:
     email: false

@@ -93,16 +93,16 @@ def load_molecule(inp_molecule, backend='openeye'):
     if backend == 'rdkit':
         if not has_rdkit:
             raise RuntimeError("You need to have RDKit installed to use the RDKit backend")
-        molecule = load_mol_rd(inp_molecule)
+        molecule = _load_mol_rd(inp_molecule)
 
     if backend == 'openeye':
         if not has_openeye:
             raise RuntimeError("You need to have OpenEye installed or an up-to-date license to use the openeye backend")
-        molecule = load_mol_oe(inp_molecule)
+        molecule = _load_mol_oe(inp_molecule)
     return molecule
 
 
-def load_mol_rd(inp_molecule):
+def _load_mol_rd(inp_molecule):
 
     _EXT_DISPATCH_TABLE = {'.pdb': Chem.MolFromPDBFile, '.mol2': Chem.MolFromMol2File, '.tpl': Chem.MolFromTPLFile}
     if isinstance(inp_molecule, str):
@@ -132,7 +132,7 @@ def load_mol_rd(inp_molecule):
     return molecule
 
 
-def load_mol_oe(inp_molecule):
+def _load_mol_oe(inp_molecule):
 
     molecule = oechem.OEMol()
     if isinstance(inp_molecule, str):

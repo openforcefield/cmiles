@@ -32,9 +32,12 @@ def get_smiles_lists(f1, f2):
 
     smiles = []
     for f in (f1, f2):
-        smiles_text = open(f, 'r').read().split('\n')[:-1]
-        for i in range(len(smiles_text)):
-            smiles_text[i] = smiles_text[i].split(' ')[0]
-        smiles.append(smiles_text)
-
+        smiles.append(get_smiles_list(f))
     return list(zip(smiles[0], smiles[-1]))
+
+
+def get_smiles_list(f):
+    smiles = open(f, 'r').read().split('\n')[:-1]
+    for i in range(len(smiles)):
+        smiles[i] = smiles[i].split(' ')[0]
+    return smiles

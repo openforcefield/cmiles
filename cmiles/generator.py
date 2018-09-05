@@ -5,13 +5,18 @@ Generate canonical, isomeric, explicit hydrogen, mapped SMILES
 import warnings
 from copy import deepcopy
 import cmiles as c
-import rdkit as rd
 
 HAS_OPENEYE = True
 try:
     import openeye
 except ImportError:
     HAS_OPENEYE = False
+
+HAS_RDKIT = True
+try:
+    import rdkit as rd
+except ImportError:
+    HAS_RDKIT = False
 
 
 def to_canonical_smiles(molecule, canonicalization='openeye'):
@@ -71,6 +76,8 @@ def to_canonical_smiles(molecule, canonicalization='openeye'):
     molecule = c.utils.load_molecule(molecule, backend=canonicalization)
     smiles = {}
     if canonicalization == 'openeye':
+        if not HAS_OPENEYE:
+            raise RuntimeError("You do not have OpenEye installed or you are missing the license.")
         smiles['canonical_smiles'] = to_canonical_smiles_oe(molecule, isomeric=False, explicit_hydrogen=False,
                                                              mapped=False)
         smiles['canonical_isomeric_smiles'] = to_canonical_smiles_oe(molecule, isomeric=True, explicit_hydrogen=False,
@@ -85,6 +92,8 @@ def to_canonical_smiles(molecule, canonicalization='openeye'):
                                                                                                mapped=True)
         smiles['provenance'] = 'cmiles_' + c.__version__ + '_openeye_' + openeye.__version__
     elif canonicalization == 'rdkit':
+        if not HAS_RDKIT:
+           raise RuntimeError("You do not have RDKit installed")
         smiles['canonical_smiles'] = to_canonical_smiles_rd(molecule, isomeric=False, explicit_hydrogen=False,
                                                              mapped=False)
         smiles['canonical_isomeric_smiles'] = to_canonical_smiles_rd(molecule, isomeric=True, explicit_hydrogen=False,
@@ -101,7 +110,18 @@ def to_canonical_smiles(molecule, canonicalization='openeye'):
     else:
         raise TypeError("canonicalization must be either 'openeye' or 'rdkit'")
 
+    smiles['Standard_InChI'] = to_inchi(molecule)
+
     return smiles
+
+
+def to_inchi(molecule):
+
+    # Make sure moelcule is rdkit mol
+    if not isinstance(molecule, rd.Chem.Mol):
+        molecule = rd.Chem.MolFromSmiles(openeye.oechem.OEMolToSmiles(molecule))
+
+    return rd.Chem.MolToInchi(molecule)
 
 
 def to_canonical_smiles_rd(molecule, isomeric, explicit_hydrogen, mapped):
@@ -127,6 +147,7 @@ def to_canonical_smiles_rd(molecule, isomeric, explicit_hydrogen, mapped):
         The canonical SMILES
 
     """
+
     molecule = deepcopy(molecule)
     # Check molecule instance
     if not isinstance(molecule, rd.Chem.rdchem.Mol):

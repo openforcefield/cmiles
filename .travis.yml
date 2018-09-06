@@ -24,7 +24,7 @@ matrix:
         - PYTHON_VER=3.6
         - ENVIRON=CMILES
 
-     - os: linux
+    - os: linux
       python: 3.6
       env:
         - PYTHON_VER=3.6
@@ -36,9 +36,9 @@ matrix:
         - PYTHON_VER=3.6
         - ENVIRON=RDKIT
 
-     - os: linux
-       python: 3.6
-       env:
+    - os: linux
+      python: 3.6
+      env:
         - PYTHON_VER=3.6
         - ENVIRON=CMILES
 

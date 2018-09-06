@@ -1,0 +1,11 @@
+name: test
+
+channels:
+  - rdkit
+
+dependencies:
+  - rdkit=2018
+  - pytest
+
+   - pip:
+    - codecov

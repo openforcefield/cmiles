@@ -1,0 +1,11 @@
+name: test
+
+channels:
+  - openeye
+
+dependencies:
+  - openeye-toolkits=2018
+  - pytest
+
+   - pip:
+    - codecov

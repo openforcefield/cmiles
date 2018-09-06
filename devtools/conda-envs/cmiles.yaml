@@ -1,0 +1,13 @@
+name: test
+
+channels:
+  - rdkit
+  - openeye
+
+dependencies:
+  - rdkit
+  - openeye-toolkits
+  - pytest
+
+   - pip:
+    - codecov

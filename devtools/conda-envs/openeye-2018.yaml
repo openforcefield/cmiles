@@ -6,6 +6,7 @@ channels:
 dependencies:
   - openeye-toolkits=2018
   - pytest
+  - pytest-cov
 
   - pip:
     - codecov

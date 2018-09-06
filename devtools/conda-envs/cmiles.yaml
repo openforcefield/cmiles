@@ -8,6 +8,7 @@ dependencies:
   - rdkit
   - openeye-toolkits
   - pytest
+  - pytest-cov
 
   - pip:
     - codecov

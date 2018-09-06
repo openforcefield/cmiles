@@ -73,9 +73,7 @@ install:
       echo "ERROR: No match for ENVIRON ($ENVIRON)."
       exit 1
     fi
-
   - source activate test
-
   - python setupt.py develop --no-deps
 
 before_script:

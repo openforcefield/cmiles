@@ -178,7 +178,7 @@ def test_oepneye_isomeric(smiles_input, oe_iso_expected):
         assert cmiles.to_canonical_smiles_oe(oe_mol, isomeric=True, mapped=False, explicit_hydrogen=False) == o
 
 
-@using_rdkit
+@using_openeye
 def test_openeye_map(smiles_input, oe_map_expected):
     """Testing rdkit canonical map ordering"""
     for i, o in zip(smiles_input, oe_map_expected):
@@ -206,6 +206,7 @@ def test_oe_mol():
 
 
 @using_rdkit
+@using_openeye
 def test_rd_mol():
     """test warning when converting oemol to rdmol"""
     molecule = oechem.OEMol()

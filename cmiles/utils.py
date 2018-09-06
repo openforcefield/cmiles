@@ -2,8 +2,20 @@
 Utility functions for cmiles generator
 """
 import os
-import rdkit
-from rdkit import Chem
+import copy
+import warnings
+
+try:
+    from rdkit import Chem
+    has_rdkit = True
+except ImportError:
+    has_rdkit = False
+
+try:
+    from openeye import oechem
+    has_openeye = True
+except ImportError:
+    has_openeye = False
 
 
 def generate_conformers(molecule, max_confs=800, strict_stereo=True, ewindow=15.0, rms_threshold=1.0, strict_types=True,
@@ -77,44 +89,75 @@ def load_molecule(inp_molecule, backend='openeye'):
         If has license to OpenEye, will return an OpenEye molecule. Otherwise will return a RDKit molecule if input can
         be parsed with RDKit.
     """
-    from rdkit import Chem
-    try:
-        from openeye import oechem
-        has_openeye = True
-    except ImportError:
-        has_openeye = False
 
+    if backend == 'rdkit':
+        if not has_rdkit:
+            raise RuntimeError("You need to have RDKit installed to use the RDKit backend")
+        molecule = _load_mol_rd(inp_molecule)
+
+    elif backend == 'openeye':
+        if not has_openeye:
+            raise RuntimeError("You need to have OpenEye installed or an up-to-date license to use the openeye backend")
+        molecule = _load_mol_oe(inp_molecule)
+    else:
+        raise RuntimeError("You must have either RDKit or OpenEye installed")
+    return molecule
+
+
+def _load_mol_rd(inp_molecule):
+
+    _EXT_DISPATCH_TABLE = {'.pdb': Chem.MolFromPDBFile, '.mol2': Chem.MolFromMol2File, '.tpl': Chem.MolFromTPLFile}
     if isinstance(inp_molecule, str):
-        # Check extension
+        # First check if it has a file extension
         ext = _get_extension(inp_molecule)
+
         if not ext:
-            # string is probably SMILES
-            if has_openeye and backend=='openeye':
-                molecule = oechem.OEMol()
-                if not oechem.OESmilesToMol(molecule, inp_molecule):
-                    raise Warning("Could not parse molecule")
-            else:
-                molecule = Chem.MolFromSmiles(inp_molecule)
-                if not molecule:
-                    raise Warning("Could not parse molecule")
-        # Load file
-        elif has_openeye:
-            molecule = oechem.OEMol()
-            ifs = oechem.oemolistream()
-            if not ifs.open(inp_molecule):
-                raise Warning("OpenEye could not open File")
-            for mol in ifs.GetOEMols():
-                molecule = oechem.OEMol(mol)
-        else:
-            try:
-                molecule = _EXT_DISPATCH_TABLE[ext](inp_molecule)
-            except KeyError:
-                raise KeyError("Could not parse {}".format(ext))
-        return molecule
-    if isinstance(inp_molecule, rdkit.Chem.rdchem.Mol):
-        return inp_molecule
+            # This is probably a SMILES
+            molecule = Chem.MolFromSmiles(inp_molecule)
+            if not molecule:
+                raise Warning("Could not parse molecule")
+
+        # Try loading string as file
+        try:
+            molecule = _EXT_DISPATCH_TABLE[ext](inp_molecule)
+        except KeyError:
+            raise KeyError("Could not parse {}".format(ext))
+
+    if isinstance(inp_molecule, Chem.Mol):
+        molecule = copy.deepcopy(inp_molecule)
+    if has_openeye and not isinstance(inp_molecule, Chem.Mol):
+        # Check if OpenEye molecule
+        if isinstance(inp_molecule, ((oechem.OEMol, oechem.OEGraphMol, oechem.OEMolBase))):
+            warnings.warn("Cannot use RDKit backend with OpenEye molecule. Converting oemol to rdkit mol")
+            molecule = Chem.MolFromSmiles(oechem.OEMolToSmiles(inp_molecule))
+
+    return molecule
+
+
+def _load_mol_oe(inp_molecule):
+
+    molecule = oechem.OEMol()
+    if isinstance(inp_molecule, str):
+        # First check if it has a file extension
+        ext = _get_extension(inp_molecule)
+
+        if not ext:
+            # This is probably a SMILES
+            oechem.OEParseSmiles(molecule, inp_molecule)
+            if not molecule:
+                raise Warning("Could not parse molecule")
+            return molecule
+
+        ifs = oechem.oemolistream()
+        if not ifs.open(inp_molecule):
+            raise Warning("OpenEye could not open File")
+        for mol in ifs.GetOEMols():
+            molecule = oechem.OEMol(mol)
+
     if isinstance(inp_molecule, (oechem.OEMol, oechem.OEGraphMol, oechem.OEMolBase)):
-        return oechem.OEMol(inp_molecule)
+        molecule = copy.deepcopy(inp_molecule)
+
+    return molecule
 
 
 def _get_extension(filename):
@@ -124,4 +167,3 @@ def _get_extension(filename):
         return extension2 + extension
     return extension
 
-_EXT_DISPATCH_TABLE = {'.pdb': rdkit.Chem.MolFromPDBFile, '.mol2': rdkit.Chem.MolFromMol2File, '.tpl': rdkit.Chem.MolFromTPLFile}

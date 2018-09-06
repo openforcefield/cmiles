@@ -71,7 +71,7 @@ install:
     elif [ $ENVIRON == "CMILES"]; then
       conda env create -n test python=$PYTHON_VER -f devtools/conda-envs/cmiles.yaml
     else
-      echo "ERROR: No match for ENVIRON ($ENVIRON)
+      echo "ERROR: No match for ENVIRON ($ENVIRON)."
       exit 1
     fi
 

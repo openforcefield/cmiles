@@ -95,10 +95,12 @@ def load_molecule(inp_molecule, backend='openeye'):
             raise RuntimeError("You need to have RDKit installed to use the RDKit backend")
         molecule = _load_mol_rd(inp_molecule)
 
-    if backend == 'openeye':
+    elif backend == 'openeye':
         if not has_openeye:
             raise RuntimeError("You need to have OpenEye installed or an up-to-date license to use the openeye backend")
         molecule = _load_mol_oe(inp_molecule)
+    else:
+        raise RuntimeError("You must have either RDKit or OpenEye installed")
     return molecule
 
 

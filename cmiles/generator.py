@@ -110,18 +110,20 @@ def to_canonical_smiles(molecule, canonicalization='openeye'):
     else:
         raise TypeError("canonicalization must be either 'openeye' or 'rdkit'")
 
-    smiles['Standard_InChI'] = to_inchi(molecule)
+    smiles['Standard_InChI'], smiles['InChIKey'] = to_inchi_and_key(molecule)
 
     return smiles
 
 
-def to_inchi(molecule):
+def to_inchi_and_key(molecule):
 
     # Make sure moelcule is rdkit mol
     if not isinstance(molecule, rd.Chem.Mol):
         molecule = rd.Chem.MolFromSmiles(openeye.oechem.OEMolToSmiles(molecule))
 
-    return rd.Chem.MolToInchi(molecule)
+    inchi = rd.Chem.MolToInchi(molecule)
+    inchi_key = rd.Chem.MolToInchiKey(molecule)
+    return inchi, inchi_key
 
 
 def to_canonical_smiles_rd(molecule, isomeric, explicit_hydrogen, mapped):

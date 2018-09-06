@@ -62,7 +62,6 @@ before_install:
 
 
 install:
-
   - |
     if [ $ENVIRON == "RDKIT"]; then
       conda env create -n test python=$PYTHON_VER -f devtools/conda-envs/rdkit-2018.yaml

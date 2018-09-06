@@ -62,7 +62,7 @@ before_install:
 
 
 install:
-  conda env create -n test python=$PYTHON_VER -f devtools/conda-envs/cmiles.yaml
+  - conda env create -n test python=$PYTHON_VER -f devtools/conda-envs/cmiles.yaml
 #  - |
 #    if [ $ENVIRON == "RDKIT"]; then
 #      echo "RDKIT env"

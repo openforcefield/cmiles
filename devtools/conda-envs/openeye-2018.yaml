@@ -7,5 +7,5 @@ dependencies:
   - openeye-toolkits=2018
   - pytest
 
-   - pip:
+  - pip:
     - codecov

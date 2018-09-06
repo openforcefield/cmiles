@@ -9,5 +9,5 @@ dependencies:
   - openeye-toolkits
   - pytest
 
-   - pip:
+  - pip:
     - codecov

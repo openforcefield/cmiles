@@ -75,7 +75,7 @@ install:
       exit 1
     fi
 
-  - conda activate test
+  - source activate test
 
   - python setupt.py develop --no-deps
 

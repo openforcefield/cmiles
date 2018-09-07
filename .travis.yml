@@ -8,17 +8,39 @@ matrix:
     # Extra includes for OSX since python language is not available by default on OSX
     - os: osx
       language: generic
-      env: PYTHON_VER=3.5
+      env:
+        - PYTHON_VER=3.6
+        - ENVIRON=OPENEYE
+
     - os: osx
       language: generic
-      env: PYTHON_VER=3.6
+      env:
+        - PYTHON_VER=3.6
+        - ENVIRON=RDKIT
+
+    - os: osx
+      language: generic
+      env:
+        - PYTHON_VER=3.6
+        - ENVIRON=CMILES
 
     - os: linux
-      python: 3.5
-      env: PYTHON_VER=3.5
+      python: 3.6
+      env:
+        - PYTHON_VER=3.6
+        - ENVIRON=OPENEYE
+
     - os: linux
       python: 3.6
-      env: PYTHON_VER=3.6
+      env:
+        - PYTHON_VER=3.6
+        - ENVIRON=RDKIT
+
+    - os: linux
+      python: 3.6
+      env:
+        - PYTHON_VER=3.6
+        - ENVIRON=CMILES
 
 env:
   global:
@@ -40,22 +62,24 @@ before_install:
 
 
 install:
+  - |
+    if [ $ENVIRON == "RDKIT" ]; then
+      conda env create -n test python=$PYTHON_VER -f devtools/conda-envs/rdkit-2018.yaml
+    elif [ $ENVIRON == "OPENEYE" ]; then
+      conda env create -n test python=$PYTHON_VER -f devtools/conda-envs/openeye-2018.yaml
+    elif [ $ENVIRON == "CMILES" ]; then
+      conda env create -n test python=$PYTHON_VER -f devtools/conda-envs/cmiles.yaml
+    else
+      echo "ERROR: No match for ENVIRON ($ENVIRON)."
+      exit 1
+    fi
+  - source activate test
+  - python setup.py develop --no-deps
 
-    # Create test environment for package
-  - conda create -n test python=$PYTHON_VER pip pytest pytest-cov
-  - conda activate test
-
-    # Install pip only modules
-  - pip install codecov
-
-   # Add channels
-  - conda config --add channels conda-forge
-  - conda config --add channels openeye
-
-    # Build and install package
-  - conda build --python=$PYTHON_VER devtools/conda-recipe
-  - conda install --use-local cmiles
-
+before_script:
+  - sleep 5
+  - python -V
+  - conda list
 
 script:
   - pytest --cov=cmiles cmiles/tests/

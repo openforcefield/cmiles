@@ -19,7 +19,7 @@ except ImportError:
     HAS_RDKIT = False
 
 
-def to_canonical_smiles(molecule, canonicalization='openeye'):
+def to_molecule_id(molecule, canonicalization='openeye'):
     """
     Generate a dictionary of canonical SMILES.
 

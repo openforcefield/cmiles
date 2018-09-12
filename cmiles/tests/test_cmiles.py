@@ -202,7 +202,7 @@ def test_oe_mol():
     """test warning when converting rdmol to oemol"""
     molecule = Chem.MolFromSmiles('CC(c1c(ccc(c1Cl)F)Cl)OC')
     with pytest.warns(UserWarning):
-        cmiles.to_canonical_smiles(molecule, canonicalization='openeye')
+        cmiles.to_molecule_id(molecule, canonicalization='openeye')
 
 
 @using_rdkit
@@ -212,7 +212,7 @@ def test_rd_mol():
     molecule = oechem.OEMol()
     oechem.OEParseSmiles(molecule, 'CC(c1c(ccc(c1Cl)F)Cl)OC')
     with pytest.warns(UserWarning):
-        cmiles.to_canonical_smiles(molecule, canonicalization='rdkit')
+        cmiles.to_molecule_id(molecule, canonicalization='rdkit')
 
 
 @using_rdkit
@@ -230,7 +230,7 @@ def test_oe_cmiles():
                        'provenance': 'cmiles_0.0.0+1.geb7d850.dirty_openeye_2018.Feb.b6'}
     molecule = oechem.OEMol()
     oechem.OEParseSmiles(molecule, 'CN(C)CC=CC(=O)Nc1cc2c(cc1OC3CCOC3)ncnc2Nc4ccc(c(c4)Cl)F')
-    output = cmiles.to_canonical_smiles(molecule, canonicalization='openeye')
+    output = cmiles.to_molecule_id(molecule, canonicalization='openeye')
     assert expected_output['canonical_smiles'] == output['canonical_smiles']
     assert expected_output['canonical_isomeric_smiles'] == output['canonical_isomeric_smiles']
     assert expected_output['canonical_isomeric_explicit_hydrogen_smiles'] == output['canonical_isomeric_explicit_hydrogen_smiles']
@@ -248,7 +248,7 @@ def test_rd_cmiles():
  'canonical_isomeric_explicit_hydrogen_mapped_smiles': '[H:1]/[C:34]([C:33](=[O:26])[N:50]([H:9])[c:43]1[c:42]([O:32][C@:59]2([H:25])[C:57]([H:21])([H:22])[O:31][C:56]([H:19])([H:20])[C:58]2([H:23])[H:24])[c:45]([H:7])[c:48]2[n:30][c:36]([H:3])[n:29][c:46]([N:51]([H:10])[c:44]3[c:38]([H:5])[c:37]([H:4])[c:40]([F:27])[c:41]([Cl:28])[c:39]3[H:6])[c:49]2[c:47]1[H:8])=[C:35](/[H:2])[C:55]([H:17])([H:18])[N:52]([C:53]([H:11])([H:12])[H:13])[C:54]([H:14])([H:15])[H:16]',
  'provenance': 'cmiles_0.0.0+7.gc71f3a6.dirty_rdkit_2018.03.3'}
     molecule = Chem.MolFromSmiles('CN(C)CC=CC(=O)Nc1cc2c(Nc3ccc(F)c(Cl)c3)ncnc2cc1OC1CCOC1')
-    output = cmiles.to_canonical_smiles(molecule, canonicalization='rdkit')
+    output = cmiles.to_molecule_id(molecule, canonicalization='rdkit')
     assert expected_output['canonical_smiles'] == output['canonical_smiles']
     assert expected_output['canonical_isomeric_smiles'] == output['canonical_isomeric_smiles']
     assert expected_output['canonical_isomeric_explicit_hydrogen_smiles'] == output['canonical_isomeric_explicit_hydrogen_smiles']
@@ -265,16 +265,16 @@ def test_diff_smiles():
     oechem.OEParseSmiles(oe_mol_1, input[0])
     oe_mol_2 = oechem.OEMol()
     oechem.OEParseSmiles(oe_mol_2, input[-1])
-    cmiles_1 = cmiles.to_canonical_smiles(oe_mol_1)
-    cmiles_2 = cmiles.to_canonical_smiles(oe_mol_2)
+    cmiles_1 = cmiles.to_molecule_id(oe_mol_1)
+    cmiles_2 = cmiles.to_molecule_id(oe_mol_2)
     assert cmiles_1['canonical_smiles'] == cmiles_2['canonical_smiles']
     assert cmiles_1['canonical_isomeric_smiles'] == cmiles_2['canonical_isomeric_smiles']
     assert cmiles_1['canonical_isomeric_explicit_hydrogen_mapped_smiles'] == cmiles_2['canonical_isomeric_explicit_hydrogen_mapped_smiles']
 
     rd_mol_1 = Chem.MolFromSmiles(input[0])
     rd_mol_2 = Chem.MolFromSmiles(input[-1])
-    cmiles_1 = cmiles.to_canonical_smiles(rd_mol_1, canonicalization='rdkit')
-    cmiles_2 = cmiles.to_canonical_smiles(rd_mol_2, canonicalization='rdkit')
+    cmiles_1 = cmiles.to_molecule_id(rd_mol_1, canonicalization='rdkit')
+    cmiles_2 = cmiles.to_molecule_id(rd_mol_2, canonicalization='rdkit')
     assert cmiles_1['canonical_smiles'] == cmiles_2['canonical_smiles']
     assert cmiles_1['canonical_isomeric_smiles'] == cmiles_2['canonical_isomeric_smiles']
     assert cmiles_1['canonical_isomeric_explicit_hydrogen_mapped_smiles'] == cmiles_2['canonical_isomeric_explicit_hydrogen_mapped_smiles']
@@ -289,15 +289,15 @@ def test_initial_iso():
     oechem.OEParseSmiles(oe_mol_1, input[0])
     oe_mol_2 = oechem.OEMol()
     oechem.OEParseSmiles(oe_mol_2, input[-1])
-    cmiles_1 = cmiles.to_canonical_smiles(oe_mol_1)
-    cmiles_2 = cmiles.to_canonical_smiles(oe_mol_2)
+    cmiles_1 = cmiles.to_molecule_id(oe_mol_1)
+    cmiles_2 = cmiles.to_molecule_id(oe_mol_2)
     assert cmiles_1['canonical_smiles'] == cmiles_2['canonical_smiles']
     assert cmiles_1['canonical_isomeric_smiles'] != cmiles_2['canonical_isomeric_smiles']
 
     rd_mol_1 = Chem.MolFromSmiles(input[0])
     rd_mol_2 = Chem.MolFromSmiles(input[-1])
-    cmiles_1 = cmiles.to_canonical_smiles(rd_mol_1, canonicalization='rdkit')
-    cmiles_2 = cmiles.to_canonical_smiles(rd_mol_2, canonicalization='rdkit')
+    cmiles_1 = cmiles.to_molecule_id(rd_mol_1, canonicalization='rdkit')
+    cmiles_2 = cmiles.to_molecule_id(rd_mol_2, canonicalization='rdkit')
     assert cmiles_1['canonical_smiles'] == cmiles_2['canonical_smiles']
     assert cmiles_1['canonical_isomeric_smiles'] != cmiles_2['canonical_isomeric_smiles']
 

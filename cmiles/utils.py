@@ -116,6 +116,7 @@ def _load_mol_rd(inp_molecule):
             molecule = Chem.MolFromSmiles(inp_molecule)
             if not molecule:
                 raise Warning("Could not parse molecule")
+            return molecule
 
         # Try loading string as file
         try:

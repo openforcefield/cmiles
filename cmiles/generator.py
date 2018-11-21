@@ -96,6 +96,7 @@ def to_molecule_id(molecule, canonicalization='openeye'):
         smiles['canonical_isomeric_explicit_hydrogen_mapped_smiles'] = to_canonical_smiles_oe(molecule_copy, isomeric=True,
                                                                                                explicit_hydrogen=True,
                                                                                                mapped=True)
+        smiles['unique_protomer_representation'] = get_unique_protomer(molecule_copy)
         smiles['provenance'] = 'cmiles_' + c.__version__ + '_openeye_' + openeye.__version__
     elif canonicalization == 'rdkit':
         if not HAS_RDKIT:
@@ -124,6 +125,7 @@ def to_molecule_id(molecule, canonicalization='openeye'):
 
 def to_inchi_and_key(molecule):
 
+    # Todo can use the InChI code directly here
     # Make sure moelcule is rdkit mol
     if not isinstance(molecule, rd.Chem.Mol):
         molecule = rd.Chem.MolFromSmiles(openeye.oechem.OEMolToSmiles(molecule))
@@ -300,6 +302,9 @@ def molecular_formula(molecule, backend='openeye'):
 
     if backend == 'openeye':
         from openeye import oechem
+        if not oechem.OEHasExplicitHydrogens(molecule):
+            #ToDo This only checks for at least one Hydrogen so it might not be adequate.
+            oechem.OEAddExplicitHydrogens(molecule)
         symbols = [oechem.OEGetAtomicSymbol(a.GetAtomicNum()) for a in molecule.GetAtoms()]
 
     elif backend == 'rdkit':
@@ -317,3 +322,19 @@ def molecular_formula(molecule, backend='openeye'):
             ret.append(str(c))
 
     return "".join(ret)
+
+
+def get_unique_protomer(molecule):
+
+    # This only works for OpenEye
+    # Todo There might be a way to use different layers of InChI for this purpose.
+    # Not all tautomers are recognized as the same by InChI so it won't capture all tautomers.
+    # But if we use only the formula and connectivity level we might be able to capture a larger subset.
+    #
+    if HAS_OPENEYE:
+        from openeye import oequacpac, oechem
+    else:
+        raise RuntimeError("Must have OpenEye for unique protomer feature")
+    molecule_copy = deepcopy(molecule)
+    oequacpac.OEGetUniqueProtomer(molecule_copy, molecule)
+    return oechem.OEMolToSmiles(molecule_copy)

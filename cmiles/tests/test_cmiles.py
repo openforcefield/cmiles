@@ -400,3 +400,15 @@ def test_chemical_formula_rd():
     assert formula == 'C4H10'
 
 
+@pytest.mark.parametrize('state1, state2',
+                          [('CC(=O)O','CC(=O)[O-]'), # protonation states
+                           ('CN4CCN(c2nc1cc(Cl)ccc1[nH]c3ccccc23)CC4', 'CN4CCN(c2[nH]c1cc(Cl)ccc1nc3ccccc23)CC4'), # 1,5 tautomerism
+                           ('CC=CC(=O)C', 'CC(=CC=C)O')]) # keto-enol
+
+@using_openeye
+def test_unique_protomer(state1, state2):
+    """Test unique protomer"""
+    mol_1 = cmiles.utils.load_molecule(state1)
+    mol_2 = cmiles.utils.load_molecule(state2)
+    assert cmiles.get_unique_protomer(mol_1) == cmiles.get_unique_protomer(mol_2)
+

@@ -377,7 +377,7 @@ def test_input_mapped_rd():
     smiles = '[H:3][C:1]([H:4])([H:5])[C:2]([H:6])([H:7])[H:8]'
     mol_id = cmiles.to_molecule_id(smiles, canonicalization='rdkit')
 
-    mol_1 = cmiles.utils.load_molecule(mol_id['canonical_isomeric_smiles'])
-    mol_2 = cmiles.utils.load_molecule(mol_id['canonical_isomeric_explicit_hydrogen_mapped_smiles'])
+    mol_1 = cmiles.utils.load_molecule(mol_id['canonical_isomeric_smiles'], backend='rdkit')
+    mol_2 = cmiles.utils.load_molecule(mol_id['canonical_isomeric_explicit_hydrogen_mapped_smiles'], backend='rdkit')
     assert cmiles.utils.is_mapped(mol_1) == False
     assert cmiles.utils.is_mapped(mol_2) == True

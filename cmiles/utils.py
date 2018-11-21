@@ -170,30 +170,16 @@ def _get_extension(filename):
 
 
 def is_mapped(molecule, backend='openeye'):
-
-    if backend == 'openeye':
-        IS_MAPPED = _oe_is_mapped(molecule)
-    elif backend == 'rdkit':
-        IS_MAPPED = _rd_is_mapped(molecule)
-    else:
-        raise TypeError("Only openeye or rdkit are supported backends")
-    print(IS_MAPPED)
-    return IS_MAPPED
-
-
-def _oe_is_mapped(molecule):
     IS_MAPPED = True
     for atom in molecule.GetAtoms():
-        if atom.GetMapIdx() == 0:
-            IS_MAPPED = False
-    return IS_MAPPED
-
-
-def _rd_is_mapped(molecule):
-    IS_MAPPED = True
-    for atom in molecule.GetAtoms():
-        if atom.GetAtomMapNum() == 0:
-            IS_MAPPED = False
+        if backend == 'openeye':
+            if atom.GetMapIdx() == 0:
+                IS_MAPPED = False
+        elif backend == 'rdkit':
+            if atom.GetAtomMapNum() == 0:
+                IS_MAPPED = False
+        else:
+            raise TypeError("Only openeye or rdkit are supported backends")
     return IS_MAPPED
 
 
@@ -209,15 +195,12 @@ def remove_map(molecule, backend='openeye'):
     -------
 
     """
-    print(backend)
-    if backend == 'openeye':
-        for a in molecule.GetAtoms():
+    for a in molecule.GetAtoms():
+        if backend == 'openeye':
             a.SetMapIdx(0)
-        return
-    elif backend == 'rdkit':
-        for a in molecule.GetAtoms():
+        elif backend == 'rdkit':
             a.SetAtomMapNum(0)
-        return
-    else:
-        raise TypeError("Only openeye and rdkit are supported backends")
+        else:
+            raise TypeError("Only openeye and rdkit are supported backends")
+
 

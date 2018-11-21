@@ -379,3 +379,24 @@ def test_input_mapped():
     mol_2 = cmiles.utils.load_molecule(mol_id['canonical_isomeric_explicit_hydrogen_mapped_smiles'], backend='rdkit')
     assert cmiles.utils.is_mapped(mol_1, backend='rdkit') == False
     assert cmiles.utils.is_mapped(mol_2, backend='rdkit') == True
+
+
+@using_openeye
+def test_chemical_formula_oe():
+    from openeye import oechem
+    smiles = 'CCCC'
+    molecule = cmiles.utils.load_molecule(smiles, backend='openeye')
+    oechem.OEAddExplicitHydrogens(molecule)
+    formula = cmiles.generator.molecular_formula(molecule, backend='openeye')
+    assert formula == 'C4H10'
+
+@using_rdkit
+def test_chemical_formula_rd():
+    from rdkit import Chem
+    smiles = 'CCCC'
+    molecule = cmiles.utils.load_molecule(smiles, backend='rdkit')
+    molecule = Chem.AddHs(molecule)
+    formula = cmiles.generator.molecular_formula(molecule, backend='rdkit')
+    assert formula == 'C4H10'
+
+

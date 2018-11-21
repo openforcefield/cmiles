@@ -3,6 +3,7 @@ Generate canonical, isomeric, explicit hydrogen, mapped SMILES
 
 """
 import warnings
+import collections
 from copy import deepcopy
 import cmiles as c
 
@@ -116,6 +117,7 @@ def to_molecule_id(molecule, canonicalization='openeye'):
         raise TypeError("canonicalization must be either 'openeye' or 'rdkit'")
 
     smiles['Standard_InChI'], smiles['InChIKey'] = to_inchi_and_key(molecule_copy)
+    smiles['molecular_formula'] = molecular_formula(molecule_copy, backend=canonicalization)
 
     return smiles
 
@@ -284,3 +286,34 @@ def to_canonical_smiles_oe(molecule, isomeric, explicit_hydrogen, mapped, genera
 
     return oechem.OEMolToSmiles(molecule)
 
+
+def to_iupac(molecule):
+    if not HAS_OPENEYE:
+        raise ImportError("OpenEye is not installed. You can use the canonicalization='rdkit' to use the RDKit backend"
+                           "The Conda recipe for cmiles installs rdkit")
+
+    from openeye import oeiupac
+    return oeiupac.OECreateIUPACName(molecule)
+
+
+def molecular_formula(molecule, backend='openeye'):
+
+    if backend == 'openeye':
+        from openeye import oechem
+        symbols = [oechem.OEGetAtomicSymbol(a.GetAtomicNum()) for a in molecule.GetAtoms()]
+
+    elif backend == 'rdkit':
+        symbols = [a.GetSymbol() for a in molecule.GetAtoms()]
+    else:
+        raise TypeError("Only openeye and rdkit are supported backends")
+
+    count = collections.Counter(x.title() for x in symbols)
+
+    ret = []
+    for k in sorted(count.keys()):
+        c = count[k]
+        ret.append(k)
+        if c > 1:
+            ret.append(str(c))
+
+    return "".join(ret)

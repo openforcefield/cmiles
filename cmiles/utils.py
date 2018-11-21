@@ -116,6 +116,7 @@ def _load_mol_rd(inp_molecule):
             molecule = Chem.MolFromSmiles(inp_molecule)
             if not molecule:
                 raise Warning("Could not parse molecule")
+            return molecule
 
         # Try loading string as file
         try:
@@ -166,4 +167,40 @@ def _get_extension(filename):
         extension2 = os.path.splitext(base)[1]
         return extension2 + extension
     return extension
+
+
+def is_mapped(molecule, backend='openeye'):
+    IS_MAPPED = True
+    for atom in molecule.GetAtoms():
+        if backend == 'openeye':
+            if atom.GetMapIdx() == 0:
+                IS_MAPPED = False
+        elif backend == 'rdkit':
+            if atom.GetAtomMapNum() == 0:
+                IS_MAPPED = False
+        else:
+            raise TypeError("Only openeye or rdkit are supported backends")
+    return IS_MAPPED
+
+
+def remove_map(molecule, backend='openeye'):
+    """
+
+    Parameters
+    ----------
+    molecule
+    backend
+
+    Returns
+    -------
+
+    """
+    for a in molecule.GetAtoms():
+        if backend == 'openeye':
+            a.SetMapIdx(0)
+        elif backend == 'rdkit':
+            a.SetAtomMapNum(0)
+        else:
+            raise TypeError("Only openeye and rdkit are supported backends")
+
 

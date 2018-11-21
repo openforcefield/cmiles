@@ -74,43 +74,48 @@ def to_molecule_id(molecule, canonicalization='openeye'):
     """
     # check input and convert to oe or rdkit mol
     molecule = c.utils.load_molecule(molecule, backend=canonicalization)
+    molecule_copy = deepcopy(molecule)
+    # check for map. If map exists, remove. We only want maps generated with cmiles
+    if c.utils.is_mapped(molecule_copy, backend=canonicalization):
+        c.utils.remove_map(molecule_copy, backend=canonicalization)
+
     smiles = {}
     if canonicalization == 'openeye':
         if not HAS_OPENEYE:
             raise RuntimeError("You do not have OpenEye installed or you are missing the license.")
-        smiles['canonical_smiles'] = to_canonical_smiles_oe(molecule, isomeric=False, explicit_hydrogen=False,
+        smiles['canonical_smiles'] = to_canonical_smiles_oe(molecule_copy, isomeric=False, explicit_hydrogen=False,
                                                              mapped=False)
-        smiles['canonical_isomeric_smiles'] = to_canonical_smiles_oe(molecule, isomeric=True, explicit_hydrogen=False,
+        smiles['canonical_isomeric_smiles'] = to_canonical_smiles_oe(molecule_copy, isomeric=True, explicit_hydrogen=False,
                                                                       mapped=False)
-        smiles['canonical_isomeric_explicit_hydrogen_smiles'] = to_canonical_smiles_oe(molecule, isomeric=True,
+        smiles['canonical_isomeric_explicit_hydrogen_smiles'] = to_canonical_smiles_oe(molecule_copy, isomeric=True,
                                                                                        explicit_hydrogen=True,
                                                                                         mapped=False)
-        smiles['canonical_explicit_hydrogen_smiles'] = to_canonical_smiles_oe(molecule, isomeric=False,
+        smiles['canonical_explicit_hydrogen_smiles'] = to_canonical_smiles_oe(molecule_copy, isomeric=False,
                                                                                explicit_hydrogen=True, mapped=False)
-        smiles['canonical_isomeric_explicit_hydrogen_mapped_smiles'] = to_canonical_smiles_oe(molecule, isomeric=True,
+        smiles['canonical_isomeric_explicit_hydrogen_mapped_smiles'] = to_canonical_smiles_oe(molecule_copy, isomeric=True,
                                                                                                explicit_hydrogen=True,
                                                                                                mapped=True)
         smiles['provenance'] = 'cmiles_' + c.__version__ + '_openeye_' + openeye.__version__
     elif canonicalization == 'rdkit':
         if not HAS_RDKIT:
            raise RuntimeError("You do not have RDKit installed")
-        smiles['canonical_smiles'] = to_canonical_smiles_rd(molecule, isomeric=False, explicit_hydrogen=False,
+        smiles['canonical_smiles'] = to_canonical_smiles_rd(molecule_copy, isomeric=False, explicit_hydrogen=False,
                                                              mapped=False)
-        smiles['canonical_isomeric_smiles'] = to_canonical_smiles_rd(molecule, isomeric=True, explicit_hydrogen=False,
+        smiles['canonical_isomeric_smiles'] = to_canonical_smiles_rd(molecule_copy, isomeric=True, explicit_hydrogen=False,
                                                                       mapped=False)
-        smiles['canonical_isomeric_explicit_hydrogen_smiles'] = to_canonical_smiles_rd(molecule, isomeric=True,
+        smiles['canonical_isomeric_explicit_hydrogen_smiles'] = to_canonical_smiles_rd(molecule_copy, isomeric=True,
                                                                                         explicit_hydrogen=True,
                                                                                         mapped=False)
-        smiles['canonical_explicit_hydrogen_smiles'] = to_canonical_smiles_rd(molecule, isomeric=False,
+        smiles['canonical_explicit_hydrogen_smiles'] = to_canonical_smiles_rd(molecule_copy, isomeric=False,
                                                                                explicit_hydrogen=True, mapped=False)
-        smiles['canonical_isomeric_explicit_hydrogen_mapped_smiles'] = to_canonical_smiles_rd(molecule, isomeric=True,
+        smiles['canonical_isomeric_explicit_hydrogen_mapped_smiles'] = to_canonical_smiles_rd(molecule_copy, isomeric=True,
                                                                                                explicit_hydrogen=True,
                                                                                                mapped=True)
         smiles['provenance'] = 'cmiles_' + c.__version__ + '_rdkit_' + rd.__version__
     else:
         raise TypeError("canonicalization must be either 'openeye' or 'rdkit'")
 
-    smiles['Standard_InChI'], smiles['InChIKey'] = to_inchi_and_key(molecule)
+    smiles['Standard_InChI'], smiles['InChIKey'] = to_inchi_and_key(molecule_copy)
 
     return smiles
 

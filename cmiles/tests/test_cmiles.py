@@ -377,5 +377,5 @@ def test_input_mapped():
 
     mol_1 = cmiles.utils.load_molecule(mol_id['canonical_isomeric_smiles'], backend='rdkit')
     mol_2 = cmiles.utils.load_molecule(mol_id['canonical_isomeric_explicit_hydrogen_mapped_smiles'], backend='rdkit')
-    assert cmiles.utils.is_mapped(mol_1) == False
-    assert cmiles.utils.is_mapped(mol_2) == True
+    assert cmiles.utils.is_mapped(mol_1, backend='rdkit') == False
+    assert cmiles.utils.is_mapped(mol_2, backend='rdkit') == True

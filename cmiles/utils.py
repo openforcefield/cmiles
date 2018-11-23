@@ -293,7 +293,7 @@ def _mol_from_json_rd(inp_molecule):
 
     # Add coordinates
     if has_geometry:
-        initial_conformer_id = molecule.AddConformer(conformer, assignID=True)
+        initial_conformer_id = molecule.AddConformer(conformer, assignId=True)
         # Assign stereochemistry from coordinates
         from rdkit.Chem import rdmolops
         rdmolops.AssignAtomChiralTagsFromStructure(molecule, confId=initial_conformer_id, replaceExistingTags=True)

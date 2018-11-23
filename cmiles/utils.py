@@ -181,16 +181,19 @@ def _load_mol_oe(inp_molecule):
 
 def mol_from_json(inp_molecule, backend='openeye'):
     """
-    Load a molecule from JSON
-    If using openeye backend, connectivity is not needed.
-    The input JSON must include symbols and geometries or symbols and connectivity.
+    Load a molecule from QCSchema
+    The input JSON should use QCSchema specs (https://molssi-qc-schema.readthedocs.io/en/latest/index.html#)
+
     Parameters
     ----------
-    inp_molecule
-    backend
+    inp_molecule: dict
+       Required keys are symbols, connectivity and/or geometry. If using RDKit as backend, must have connectivity.
+    backend: str, optional. Default openeye
+        Specify which cheminformatics toolkit to use. Options are openeye and rdkit.
 
     Returns
     -------
+    molecule: Either OEMol or rdkit.Chem.Mol
 
     """
     # Check fields
@@ -207,6 +210,21 @@ def mol_from_json(inp_molecule, backend='openeye'):
 
 
 def _mol_from_json_oe(inp_molecule):
+    """
+    Generate OEMol from QCSchema molecule specs
+    Parameters
+    ----------
+    inp_molecule: dict
+        Must have symbols and connectivity and/or geometry
+        Note: If geometry is given, the molecule will have a tag indicating that the goemetry came from QCSchema. This
+        will ensure that the order of the atoms and configuration is not change for generation of mapped SMILES and
+        isomeric SMILES.
+
+    Returns
+    -------
+    molecule: OEMol
+
+    """
 
     if not has_openeye:
         raise RuntimeError("You do not have OpenEye installed or do not have license to use it. Use the RDKit backend")
@@ -257,6 +275,18 @@ def _mol_from_json_oe(inp_molecule):
 
 
 def _mol_from_json_rd(inp_molecule):
+    """
+    Generate RDkit.Chem.Mol from QCSchema molecule specs.
+    Parameters
+    ----------
+    inp_molecule: dict
+        Must include symbols and connectivity. Geometry is optional. If geometry is given, stereochemistry will be taken
+        from coordinates
+
+    Returns
+    -------
+    molecule: rdkit.Chem.Mol
+    """
 
     if not has_rdkit:
         raise RuntimeError("Must have RDKit installed when using the RDKit backend")

@@ -175,6 +175,7 @@ def to_canonical_smiles_rd(molecule, isomeric, explicit_hydrogen, mapped):
     if isomeric:
         # Make sure molecule has isomeric information
         # If molecule already has isomeric information, keep it.
+        # ToDo assign chiral tags from structure if structure exists
 
         # First find chiral centers
         chiral_centers = rd.Chem.FindMolChiralCenters(molecule, includeUnassigned=True)
@@ -244,7 +245,17 @@ def to_canonical_smiles_oe(molecule, isomeric, explicit_hydrogen, mapped, genera
         oechem.OEAddExplicitHydrogens(molecule)
 
     # Generate conformer for canonical order
-    if generate_conformer:
+    # First check if geometry from JSON exists
+    try:
+        JSON_geometry = molecule.GetData('JSON_geometry')
+    except ValueError:
+        JSON_geometry = False
+
+    if generate_conformer and not JSON_geometry:
+        # geometry that comes from JSON molecule we don't want to change because the mapping needs to match that order
+        # For geometries that come from files, we want to reorder those to canonical order but need to make sure we
+        # don't lose stereochemistry information.
+        #ToDo make sure generating new conformation with canonical order for a molecule that already has coordinates does not mess up existing stereochemistry
         try:
             molecule = c.utils.generate_conformers(molecule, max_confs=1, strict_stereo=False, strict_types=False)
         except RuntimeError:

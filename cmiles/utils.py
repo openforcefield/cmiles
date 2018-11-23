@@ -18,6 +18,7 @@ try:
 except ImportError:
     has_openeye = False
 
+
 _symbols = {'H':1,'He':2,
             'Li':3,'Be':4,'B':5,'C':6,'N':7,'O':8,'F:':9,'Ne':10,
             'Na':11,'Mg':12,'Al':13,'Si':14,'P':15,'S':16,'Cl':17,'Ar':18,
@@ -26,8 +27,10 @@ _symbols = {'H':1,'He':2,
             'Cs':55,'Ba':56,'La':57,'Ce':58,'Pr':59,'Nd':60,'Pm':61,'Sm':62,'Eu':63,'Gd':64,'Tb':65,'Dy':66,'Ho':67,'Er':68,'Tm':69,'Yb':70,
             'Lu':71,'Hf':72,'Ta':73,'W':74,'Re':75,'Os':76,'Ir':77,'Pt':78,'Au':79,'Hg':80,'Tl':81,'Pb':82,'Bi':83,'Po':84,'At':85,'Rn':86,
             'Fr':87,'Ra':88,'Ac':89,'Th':90,'Pa':91,'U':92,'Np':93,'Pu':94,'Am':95,'Cm':96,'Bk':97,'Cf':98,'Es':99,'Fm':100,'Md':101,'No':102,'Lr':103,'Rf':104,'Db':105,'Sg':106,'Bh':107,'Hs':108,'Mt':109}
+
 BOHR_2_ANGSTROM = 0.529177210
 ANGSROM_2_BOHR = 1. / BOHR_2_ANGSTROM
+
 
 def generate_conformers(molecule, max_confs=800, strict_stereo=True, ewindow=15.0, rms_threshold=1.0, strict_types=True,
                         copy=True, canon_order=True):
@@ -103,7 +106,7 @@ def load_molecule(inp_molecule, backend='openeye'):
     """
     if isinstance(inp_molecule, dict):
         # This is a JSON molecule
-        molecule = load_mol_json(inp_molecule, backend=backend)
+        molecule = mol_from_json(inp_molecule, backend=backend)
 
     elif backend == 'rdkit':
         if not has_rdkit:
@@ -176,7 +179,7 @@ def _load_mol_oe(inp_molecule):
     return molecule
 
 
-def load_mol_json(inp_molecule, backend='openeye'):
+def mol_from_json(inp_molecule, backend='openeye'):
     """
     Load a molecule from JSON
     If using openeye backend, connectivity is not needed.
@@ -193,54 +196,110 @@ def load_mol_json(inp_molecule, backend='openeye'):
     # Check fields
     if 'symbols' not in inp_molecule:
         raise KeyError("JSON input molecule must have symbols")
-    if 'connectivity' not in inp_molecule:
-        # Must use OpenEye.
-        if not has_openeye:
-            raise RuntimeError("Cannot create molecular graph from geometry without OpenEye")
-        molecule = _mol_from_geometry(inp_molecule)
-    elif 'connectivity' in inp_molecule:
-        molecule = _mol_from_connectivity(inp_molecule, backend=backend)
+    if backend == 'openeye':
+        molecule = _mol_from_json_oe(inp_molecule)
+    elif backend == 'rdkit':
+        molecule = _mol_from_json_rd(inp_molecule)
     else:
-        raise KeyError("Not enough information to generate a molecular graph. Input JSON molecule must have either"
-                       "geometry or connectivity defined")
+        raise ValueError("Only openeye and rdkit backends are supported")
 
-
-def _mol_from_geometry(inp_molecule):
-    """
-    Must have OpenEye to create molecular graph from only geometry without connectivity
-    Parameters
-    ----------
-    inp_molecule
-
-    Returns
-    -------
-
-    """
-    if not has_openeye:
-        raise RuntimeError("Must have OpenEye to generate molecular graph from geometry")
-    symbols = inp_molecule['symbols']
-    geometry = inp_molecule['geometry']
-
-    molecule = oechem.OEMol()
-    for s in symbols:
-        molecule.NewAtom(_symbols[s])
-    geometry_3n = np.array(geometry, dtype=float).reshape(int(len(geometry)/3), 3)
-    if molecule.NumAtoms() != len(geometry_3n):
-        raise ValueError("Number of atoms in molecule does not match length of position array")
-    # convert to Angstroms
-    geometry_3n = geometry_3n*BOHR_2_ANGSTROM
-    molecule.SetCoords(oechem.OEFloatArray(geometry_3n))
-
-    oechem.OEDetermineConnectivity(molecule)
-    oechem.OEFindRingAtomsAndBonds(molecule)
-    oechem.OEPerceiveBondOrders(molecule)
-    oechem.OEAssignImplicitHydrogens(molecule)
-    oechem.OEAssignFormalCharges(molecule)
     return molecule
 
 
-def _mol_from_connectivity(inp_molecule, backend='openeye'):
-    pass
+def _mol_from_json_oe(inp_molecule):
+
+    if not has_openeye:
+        raise RuntimeError("You do not have OpenEye installed or do not have license to use it. Use the RDKit backend")
+
+    molecule = oechem.OEMol()
+    symbols = inp_molecule['symbols']
+
+    for s in symbols:
+        molecule.NewAtom(_symbols[s])
+
+    # Add connectivity if it exists
+    has_connectivity = False
+    if 'connectivity' in inp_molecule:
+        has_connectivity = True
+        connectivity = inp_molecule['connectivity']
+        for bond in connectivity:
+            a1 = molecule.GetAtom(oechem.OEHasAtomIdx(bond[0]))
+            a2 = molecule.GetAtom(oechem.OEHasAtomIdx(bond[1]))
+            molecule.NewBond(a1, a2, bond[-1])
+
+    # Add geometry if it exists
+    has_geometry = False
+    if 'geometry' in inp_molecule:
+        has_geometry = True
+        # Convert to Angstroms
+        geometry = np.asarray(inp_molecule['geometry'])*BOHR_2_ANGSTROM
+        if molecule.NumAtoms() != geometry.shape[0]/3:
+            raise ValueError("Number of atoms in molecule does not match length of position array")
+
+        conf = molecule.GetConfs().next()
+        conf.SetCoords(oechem.OEFloatArray(geometry))
+
+        # Add tag that the geometry is from JSON and shouldn't be changed.
+        geom_tag = oechem.OEGetTag("JSON_geometry")
+        molecule.SetData(geom_tag, True)
+        if not has_connectivity:
+            # Have to perceive connectivity from coordinates
+            oechem.OEDetermineConnectivity(molecule)
+            oechem.OEFindRingAtomsAndBonds(molecule)
+            oechem.OEPerceiveBondOrders(molecule)
+            oechem.OEAssignImplicitHydrogens(molecule)
+            oechem.OEAssignFormalCharges(molecule)
+
+    if not has_geometry and not has_connectivity:
+        raise RuntimeError("Not enough information to generate molecular graph. Geometry or connectivity must be provided")
+
+    return molecule
+
+
+def _mol_from_json_rd(inp_molecule):
+
+    if not has_rdkit:
+        raise RuntimeError("Must have RDKit installed when using the RDKit backend")
+    from rdkit.Geometry.rdGeometry import Point3D
+
+    _BO_DISPATCH_TABLE = {1: Chem.BondType.SINGLE, 2: Chem.BondType.DOUBLE, 3: Chem.BondType.TRIPLE}
+
+    symbols = inp_molecule['symbols']
+    connectivity = inp_molecule['connectivity']
+    has_geometry = False
+    if 'geometry' in inp_molecule:
+        geometry = np.array(inp_molecule['geometry'], dtype=float).reshape(int(len(inp_molecule['geometry'])/3), 3)*BOHR_2_ANGSTROM
+        conformer = Chem.Conformer(len(symbols))
+        has_geometry = True
+
+    molecule = Chem.Mol()
+    em = Chem.RWMol(molecule)
+    for i, s in enumerate(symbols):
+        atom = em.AddAtom(Chem.Atom(_symbols[s]))
+        if has_geometry:
+            atom_position = Point3D(geometry[i][0], geometry[i][1], geometry[i][2])
+            conformer.SetAtomPosition(atom, atom_position)
+
+    # Add connectivity
+    for bond in connectivity:
+        bond_type = _BO_DISPATCH_TABLE[bond[-1]]
+        em.AddBond(bond[0], bond[1], bond_type)
+
+    molecule = em.GetMol()
+    try:
+        Chem.SanitizeMol(molecule)
+    except:
+        raise RuntimeError("Could not sanitize molecule")
+
+    # Add coordinates
+    if has_geometry:
+        initial_conformer_id = molecule.AddConformer(conformer, assignID=True)
+        # Assign stereochemistry from coordinates
+        from rdkit.Chem import rdmolops
+        rdmolops.AssignAtomChiralTagsFromStructure(molecule, confId=initial_conformer_id, replaceExistingTags=True)
+
+    return molecule
+
 
 def _get_extension(filename):
     (base, extension) = os.path.splitext(filename)

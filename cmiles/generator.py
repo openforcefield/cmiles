@@ -5,7 +5,7 @@ Generate canonical, isomeric, explicit hydrogen, mapped SMILES
 import warnings
 import collections
 from copy import deepcopy
-import cmiles as c
+import cmiles
 
 HAS_OPENEYE = True
 try:
@@ -74,11 +74,11 @@ def to_molecule_id(molecule, canonicalization='openeye'):
 
     """
     # check input and convert to oe or rdkit mol
-    molecule = c.utils.load_molecule(molecule, backend=canonicalization)
+    molecule = cmiles.utils.load_molecule(molecule, backend=canonicalization)
     molecule_copy = deepcopy(molecule)
     # check for map. If map exists, remove. We only want maps generated with cmiles
-    if c.utils.is_mapped(molecule_copy, backend=canonicalization):
-        c.utils.remove_map(molecule_copy, backend=canonicalization)
+    if cmiles.utils.is_mapped(molecule_copy, backend=canonicalization):
+        cmiles.utils.remove_map(molecule_copy, backend=canonicalization)
 
     smiles = {}
     if canonicalization == 'openeye':
@@ -97,7 +97,7 @@ def to_molecule_id(molecule, canonicalization='openeye'):
                                                                                                explicit_hydrogen=True,
                                                                                                mapped=True)
         smiles['unique_protomer_representation'] = get_unique_protomer(molecule_copy)
-        smiles['provenance'] = 'cmiles_' + c.__version__ + '_openeye_' + openeye.__version__
+        smiles['provenance'] = 'cmiles_' + cmiles.__version__ + '_openeye_' + openeye.__version__
     elif canonicalization == 'rdkit':
         if not HAS_RDKIT:
            raise RuntimeError("You do not have RDKit installed")
@@ -113,11 +113,11 @@ def to_molecule_id(molecule, canonicalization='openeye'):
         smiles['canonical_isomeric_explicit_hydrogen_mapped_smiles'] = to_canonical_smiles_rd(molecule_copy, isomeric=True,
                                                                                                explicit_hydrogen=True,
                                                                                                mapped=True)
-        smiles['provenance'] = 'cmiles_' + c.__version__ + '_rdkit_' + rd.__version__
+        smiles['provenance'] = 'cmiles_' + cmiles.__version__ + '_rdkit_' + rd.__version__
     else:
         raise TypeError("canonicalization must be either 'openeye' or 'rdkit'")
 
-    smiles['Standard_InChI'], smiles['InChIKey'] = to_inchi_and_key(molecule_copy)
+    smiles['standard_inchi'], smiles['inchikey'] = to_inchi_and_key(molecule_copy)
     smiles['molecular_formula'] = molecular_formula(molecule_copy, backend=canonicalization)
 
     return smiles
@@ -250,7 +250,7 @@ def to_canonical_smiles_oe(molecule, isomeric, explicit_hydrogen, mapped, genera
     # Generate conformer for canonical order
     if generate_conformer:
         try:
-            molecule = c.utils.generate_conformers(molecule, max_confs=1, strict_stereo=False, strict_types=False)
+            molecule = cmiles.utils.generate_conformers(molecule, max_confs=1, strict_stereo=False, strict_types=False)
         except RuntimeError:
             warnings.warn("Omega failed to generate a conformer. Smiles may be missing stereochemistry and the map index will"
                           "not be in canonical order.")

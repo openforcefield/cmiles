@@ -395,6 +395,8 @@ def _chemical_formula_rd(smiles):
     molecule = Chem.AddHs(molecule)
     return (cmiles.generator.molecular_formula(molecule, backend='rdkit'))
 
+@using_rdkit
+@using_openeye
 @pytest.mark.parametrize("backend", [_chemical_formula_oe, _chemical_formula_rd])
 @pytest.mark.parametrize("smiles, bench", [("CCCC", "C4H10"), ("C", "CH4")]) # This uncovered a bug in load_molecule. The period makes it look like a filename
                                                                #  ("[Li+].[Li+].[O2-]", "LiO2")]) ToDo fix this bug

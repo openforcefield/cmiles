@@ -9,7 +9,7 @@ import cmiles
 
 HAS_OPENEYE = True
 try:
-    import openeye
+    import openeye as oe
 except ImportError:
     HAS_OPENEYE = False
 
@@ -117,7 +117,7 @@ def to_molecule_id(molecule, canonicalization='openeye'):
     else:
         raise TypeError("canonicalization must be either 'openeye' or 'rdkit'")
 
-    smiles['standard_inchi'], smiles['inchikey'] = to_inchi_and_key(molecule_copy)
+    smiles['standard_inchi'], smiles['inchi_key'] = to_inchi_and_key(molecule_copy)
     smiles['molecular_formula'] = molecular_formula(molecule_copy, backend=canonicalization)
 
     return smiles
@@ -128,7 +128,7 @@ def to_inchi_and_key(molecule):
     # Todo can use the InChI code directly here
     # Make sure moelcule is rdkit mol
     if not isinstance(molecule, rd.Chem.Mol):
-        molecule = rd.Chem.MolFromSmiles(openeye.oechem.OEMolToSmiles(molecule))
+        molecule = rd.Chem.MolFromSmiles(oe.oechem.OEMolToSmiles(molecule))
 
     inchi = rd.Chem.MolToInchi(molecule)
     inchi_key = rd.Chem.MolToInchiKey(molecule)
@@ -164,9 +164,9 @@ def to_canonical_smiles_rd(molecule, isomeric, explicit_hydrogen, mapped):
     if not isinstance(molecule, rd.Chem.rdchem.Mol):
         warnings.warn("molecule should be rdkit molecule. Converting to rdkit molecule", UserWarning)
         # Check if OpenEye Mol and convert to RDKit molecule
-        if HAS_OPENEYE and isinstance(molecule, openeye.OEMol):
+        if HAS_OPENEYE and isinstance(molecule, oe.OEMol):
             # Convert OpenEye Mol to RDKit molecule
-            molecule = rd.Chem.MolFromSmiles(openeye.oechem.OEMolToSmiles(molecule))
+            molecule = rd.Chem.MolFromSmiles(oe.oechem.OEMolToSmiles(molecule))
             if molecule is None:
                 raise RuntimeError("RDKit could not parse SMILES")
         else:
@@ -298,30 +298,53 @@ def to_iupac(molecule):
     return oeiupac.OECreateIUPACName(molecule)
 
 
-def molecular_formula(molecule, backend='openeye'):
+def molecular_formula(molecule):
+    """
+    Generate Hill sorted empirical formula. Hill sorted first lists C and H and then all other symbols in alphabetical
+    order
+    Parameters
+    ----------
+    molecule: openeye or rdkit molecule
 
-    if backend == 'openeye':
-        from openeye import oechem
-        if not oechem.OEHasExplicitHydrogens(molecule):
+    Returns
+    -------
+    hill sorted empirical formula
+    """
+
+    # check molecule
+    if HAS_OPENEYE and isinstance(molecule, (oe.OEMol, oe.OEGraphMol, oe.OEMolBase )):
+        # use openeye
+        if not oe.oechem.OEHasExplicitHydrogens(molecule):
+            molecule = deepcopy(molecule)
             #ToDo This only checks for at least one Hydrogen so it might not be adequate.
-            oechem.OEAddExplicitHydrogens(molecule)
-        symbols = [oechem.OEGetAtomicSymbol(a.GetAtomicNum()) for a in molecule.GetAtoms()]
+            oe.oechem.OEAddExplicitHydrogens(molecule)
+        symbols = [oe.oechem.OEGetAtomicSymbol(a.GetAtomicNum()) for a in molecule.GetAtoms()]
 
-    elif backend == 'rdkit':
+    elif HAS_RDKIT and isinstance(molecule, rd.Chem.Mol):
+        # use rdkit
+        molecule = rd.Chem.AddHs(deepcopy(molecule))
         symbols = [a.GetSymbol() for a in molecule.GetAtoms()]
     else:
-        raise TypeError("Only openeye and rdkit are supported backends")
+        raise TypeError("Only openeye and rdkit molecules are supported molecules")
 
     count = collections.Counter(x.title() for x in symbols)
 
-    ret = []
+    hill_sorted = []
+    for k in ['C', 'H']:
+        # remove C and H from count
+        if k in count:
+            c = count.pop(k)
+            hill_sorted.append(k)
+            if c > 1:
+                hill_sorted.append(str(c))
+
     for k in sorted(count.keys()):
         c = count[k]
-        ret.append(k)
+        hill_sorted.append(k)
         if c > 1:
-            ret.append(str(c))
+            hill_sorted.append(str(c))
 
-    return "".join(ret)
+    return "".join(hill_sorted)
 
 
 def get_unique_protomer(molecule):

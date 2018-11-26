@@ -386,19 +386,19 @@ def _chemical_formula_oe(smiles):
     from openeye import oechem
     molecule = cmiles.utils.load_molecule(smiles, backend='openeye')
     oechem.OEAddExplicitHydrogens(molecule)
-    return (cmiles.generator.molecular_formula(molecule, backend='openeye'))
+    return (cmiles.generator.molecular_formula(molecule))
 
 @using_rdkit
 def _chemical_formula_rd(smiles):
     from rdkit import Chem
     molecule = cmiles.utils.load_molecule(smiles, backend='rdkit')
     molecule = Chem.AddHs(molecule)
-    return (cmiles.generator.molecular_formula(molecule, backend='rdkit'))
+    return (cmiles.generator.molecular_formula(molecule))
 
 @using_rdkit
 @using_openeye
 @pytest.mark.parametrize("backend", [_chemical_formula_oe, _chemical_formula_rd])
-@pytest.mark.parametrize("smiles, bench", [("CCCC", "C4H10"), ("C", "CH4")]) # This uncovered a bug in load_molecule. The period makes it look like a filename
+@pytest.mark.parametrize("smiles, bench", [("CCCC", "C4H10"), ("C", "CH4"), ("CC(Br)(Br)", "C2H4Br2")]) # This uncovered a bug in load_molecule. The period makes it look like a filename
                                                                #  ("[Li+].[Li+].[O2-]", "LiO2")]) ToDo fix this bug
 def test_molecule_formula(backend, smiles, bench):
     assert backend(smiles) == bench

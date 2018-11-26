@@ -118,7 +118,7 @@ def to_molecule_id(molecule, canonicalization='openeye'):
         raise TypeError("canonicalization must be either 'openeye' or 'rdkit'")
 
     smiles['standard_inchi'], smiles['inchi_key'] = to_inchi_and_key(molecule_copy)
-    smiles['molecular_formula'] = molecular_formula(molecule_copy, backend=canonicalization)
+    smiles['molecular_formula'] = molecular_formula(molecule_copy)
 
     return smiles
 

@@ -97,7 +97,7 @@ def to_molecule_id(molecule, canonicalization='openeye'):
                                                                                                explicit_hydrogen=True,
                                                                                                mapped=True)
         smiles['unique_protomer_representation'] = get_unique_protomer(molecule_copy)
-        smiles['provenance'] = 'cmiles_' + cmiles.__version__ + '_openeye_' + openeye.__version__
+        smiles['provenance'] = 'cmiles_' + cmiles.__version__ + '_openeye_' + oe.__version__
     elif canonicalization == 'rdkit':
         if not HAS_RDKIT:
            raise RuntimeError("You do not have RDKit installed")

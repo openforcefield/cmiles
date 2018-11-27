@@ -76,8 +76,8 @@ def to_molecule_id(molecule, canonicalization='openeye'):
     molecule = c.utils.load_molecule(molecule, backend=canonicalization)
     molecule_copy = deepcopy(molecule)
     # check for map. If map exists, remove. We only want maps generated with cmiles
-    if c.utils.is_mapped(molecule_copy, backend=canonicalization):
-        c.utils.remove_map(molecule_copy, backend=canonicalization)
+    if c.utils.is_mapped(molecule_copy):
+        c.utils.remove_map(molecule_copy)
 
     smiles = {}
     if canonicalization == 'openeye':
@@ -171,8 +171,15 @@ def to_canonical_smiles_rd(molecule, isomeric, explicit_hydrogen, mapped):
     if explicit_hydrogen:
         # Add explicit hydrogens
         molecule = rd.Chem.AddHs(molecule)
+    if not explicit_hydrogen:
+        molecule = rd.Chem.RemoveHs(molecule)
 
-    if isomeric:
+    try:
+        json_geometry = int(molecule.GetProp("_json_geometry"))
+    except KeyError:
+        json_geometry = False
+
+    if isomeric and not json_geometry:
         # Make sure molecule has isomeric information
         # If molecule already has isomeric information, keep it.
         # ToDo assign chiral tags from structure if structure exists
@@ -193,9 +200,15 @@ def to_canonical_smiles_rd(molecule, isomeric, explicit_hydrogen, mapped):
 
     # Get canonical order for map
     if mapped:
-        ranks = list(rd.Chem.CanonicalRankAtoms(molecule, breakTies=True))
-        for i, j in enumerate(ranks):
-            molecule.GetAtomWithIdx(i).SetAtomMapNum(j+1)
+        if json_geometry:
+            # keep original ordering
+            for i in range(molecule.GetNumAtoms()):
+                molecule.GetAtomWithIdx(i).SetAtomMapNum(i+1)
+        else:
+            # canonical order for map
+            ranks = list(rd.Chem.CanonicalRankAtoms(molecule, breakTies=True))
+            for i, j in enumerate(ranks):
+                molecule.GetAtomWithIdx(i).SetAtomMapNum(j+1)
 
     smiles = rd.Chem.MolToSmiles(molecule, allHsExplicit=explicit_hydrogen, isomericSmiles=isomeric, canonical=True)
     return smiles
@@ -247,7 +260,7 @@ def to_canonical_smiles_oe(molecule, isomeric, explicit_hydrogen, mapped, genera
     # Generate conformer for canonical order
     # First check if geometry from JSON exists
     try:
-        JSON_geometry = molecule.GetData('JSON_geometry')
+        JSON_geometry = molecule.GetData('json_geometry')
     except ValueError:
         JSON_geometry = False
 

@@ -377,5 +377,141 @@ def test_input_mapped():
 
     mol_1 = cmiles.utils.load_molecule(mol_id['canonical_isomeric_smiles'], backend='rdkit')
     mol_2 = cmiles.utils.load_molecule(mol_id['canonical_isomeric_explicit_hydrogen_mapped_smiles'], backend='rdkit')
-    assert cmiles.utils.is_mapped(mol_1, backend='rdkit') == False
-    assert cmiles.utils.is_mapped(mol_2, backend='rdkit') == True
+    assert cmiles.utils.is_mapped(mol_1) == False
+    assert cmiles.utils.is_mapped(mol_2) == True
+
+
+# @using_openeye
+# def test_geom_from_json():
+#     hooh = {
+#         'symbols': ['H', 'O', 'O', 'H'],
+#         'geometry': [
+#              1.84719633,  1.47046223,  0.80987166,
+#              1.3126021,  -0.13023157, -0.0513322,
+#             -1.31320906,  0.13130216, -0.05020593,
+#             -1.83756335, -1.48745318,  0.80161212
+#         ],
+#         'name': 'HOOH',
+#         'connectivity': [[0, 1, 1], [1, 2, 1], [2, 3, 1]],
+#     }
+#     molecule = cmiles.utils.load_molecule(hooh)
+#     id_1 = cmiles.to_molecule_id(molecule)
+#     molecule.SetData("json_geometry", False)
+#     id_2 = cmiles.to_molecule_id(molecule)
+#
+#     assert id_1['canonical_isomeric_explicit_hydrogen_mapped_smiles'] == '[H:1][O:2][O:3][H:4]'
+#     assert id_2['canonical_isomeric_explicit_hydrogen_mapped_smiles'] == '[H:3][O:1][O:2][H:4]'
+
+@using_rdkit
+def test_geom_from_rd():
+    hooh = {
+        'symbols': ['H', 'O', 'O', 'H'],
+        'geometry': [
+             1.84719633,  1.47046223,  0.80987166,
+             1.3126021,  -0.13023157, -0.0513322,
+            -1.31320906,  0.13130216, -0.05020593,
+            -1.83756335, -1.48745318,  0.80161212
+        ],
+        'name': 'HOOH',
+        'connectivity': [[0, 1, 1], [1, 2, 1], [2, 3, 1]],
+    }
+    molecule = cmiles.utils.load_molecule(hooh, backend='rdkit')
+
+    id_1 = cmiles.to_molecule_id(molecule, canonicalization='rdkit')
+    molecule.SetProp("_json_geometry", '0')
+    id_2 = cmiles.to_molecule_id(molecule, canonicalization='rdkit')
+
+    assert id_1['canonical_isomeric_explicit_hydrogen_mapped_smiles'] == '[H:1][O:2][O:3][H:4]'
+    assert id_2['canonical_isomeric_explicit_hydrogen_mapped_smiles'] == '[H:1][O:3][O:4][H:2]'
+
+@using_openeye
+@using_rdkit
+def test_keep_stereo():
+    """Test that reading from json molecule retains the order of json geometry and stereochemistry"""
+
+    json_mol = {'symbols': ['C', 'C', 'N', 'O', 'F', 'H', 'H', 'H', 'H', 'H', 'H'],
+                'geometry': [1.490934395068127, -0.022852472359013117, -1.935709059338355,
+                             -0.07992863034848685, -0.42027454585371643, 0.4300901370510521,
+                             -1.6008431326210255,  1.7962788702240675,  0.9893952378782299,
+                             -1.578310435156546,  -2.623152319435938, 0.12587101271275358,
+                              1.5081897367264838, -0.8595839767115931, 2.4023274238804375,
+                              2.643487029125874,  -1.686714912858618,  -2.3700985298604698,
+                              0.29985967115960716, 0.42241227312506313, -3.568237727722486,
+                              2.7917672897488948,  1.5663042901906687, -1.6694857028577224,
+                             -0.4416762043595982,  3.317083889862761,  1.2129328698056736,
+                             -2.732926456425621,   2.1997415241410825, -0.5153340816908529,
+                             -2.648885919666481,  -2.3294408246718734, -1.337378806095166],
+                'molecular_charge': 0,
+                'molecular_multiplicity': 1,
+                'connectivity': [[0, 1, 1],
+                  [1, 2, 1],
+                  [1, 3, 1],
+                  [1, 4, 1],
+                  [0, 5, 1],
+                  [0, 6, 1],
+                  [0, 7, 1],
+                  [2, 8, 1],
+                  [2, 9, 1],
+                  [3, 10, 1]]
+                }
+
+    # load as rdkit molecule
+    # ToDo Get the Openeye one to work. Currently it's not perceiving stereochemsitry from geometry and some other things seem to be off
+    mol_id = cmiles.to_molecule_id(json_mol)
+
+    assert mol_id['canonical_smiles'] == 'CC(N)(O)F'
+    assert mol_id['canonical_isomeric_smiles'] == 'C[C@@](N)(O)F'
+    assert mol_id['canonical_isomeric_explicit_hydrogen_smiles'] == '[H]C([H])([H])[C@@](N([H])[H])(O[H])F'
+    assert mol_id['canonical_isomeric_explicit_hydrogen_mapped_smiles'] == '[H:6][C:1]([H:7])([H:8])[C@@:2]([N:3]([H:9])[H:10])([O:4][H:11])[F:5]'
+
+    # generate rd canonicalized smiles - the order should still be as before even though that is not the rdkit canonical
+    # order. We want to retain the order for json molecules to their geometry
+    mol_id = cmiles.to_molecule_id(json_mol, canonicalization='rdkit')
+    assert mol_id['canonical_smiles'] == 'CC(N)(O)F'
+    assert mol_id['canonical_isomeric_smiles'] == 'C[C@@](N)(O)F'
+    assert mol_id['canonical_isomeric_explicit_hydrogen_smiles'] == '[H][O][C@]([F])([N]([H])[H])[C]([H])([H])[H]'
+    assert mol_id['canonical_isomeric_explicit_hydrogen_mapped_smiles'] == '[C:1]([C@@:2]([N:3]([H:9])[H:10])([O:4][H:11])[F:5])([H:6])([H:7])[H:8]'
+
+    # Now the other stereoisomer
+    json_mol = {'symbols': ['C', 'C', 'N', 'O', 'F', 'H', 'H', 'H', 'H', 'H', 'H'],
+                'geometry': [1.490934395068127, -0.022852472359013117, -1.935709059338355,
+                             -0.07992863034848685, -0.42027454585371643, 0.4300901370510521,
+                             -1.6008431326210255, 1.7962788702240675, 0.9893952378782299,
+                              1.544484919393002,  -1.0715460728389934, 2.461713642916755,
+                             -1.6405346423022924, -2.4261921600567007, 0.04846706513552157,
+                              2.643487029125874,  -1.686714912858618,  -2.3700985298604698,
+                              0.29985967115960716, 0.42241227312506313, -3.568237727722486,
+                              2.7917672897488948,  1.5663042901906687, -1.6694857028577224,
+                              -0.4416762043595982, 3.317083889862761, 1.2129328698056736,
+                               -2.732926456425621, 2.1997415241410825, -0.5153340816908529,
+                                2.4021616230193055, -2.619467530461027, 1.9699541458951846],
+                'molecular_charge': 0,
+                'molecular_multiplicity': 1,
+                'connectivity': [[0, 1, 1],
+                [1, 2, 1],
+                [1, 3, 1],
+                [1, 4, 1],
+                [0, 5, 1],
+                [0, 6, 1],
+                [0, 7, 1],
+                [2, 8, 1],
+                [2, 9, 1],
+                [3, 10, 1]],
+                }
+    mol_id = cmiles.to_molecule_id(json_mol)
+
+    assert mol_id['canonical_smiles'] == 'CC(N)(O)F'
+    assert mol_id['canonical_isomeric_smiles'] == 'C[C@](N)(O)F'
+    assert mol_id['canonical_isomeric_explicit_hydrogen_smiles'] == '[H]C([H])([H])[C@](N([H])[H])(O[H])F'
+    assert mol_id['canonical_isomeric_explicit_hydrogen_mapped_smiles'] == '[H:6][C:1]([H:7])([H:8])[C@:2]([N:3]([H:9])[H:10])([O:4][H:11])[F:5]'
+
+    # generate rd canonicalized smiles - the order should still be as before even though that is not the rdkit canonical
+    # order. We want to retain the order for json molecules to their geometry
+    mol_id = cmiles.to_molecule_id(json_mol, canonicalization='rdkit')
+    assert mol_id['canonical_smiles'] == 'CC(N)(O)F'
+    assert mol_id['canonical_isomeric_smiles'] == 'C[C@](N)(O)F'
+    assert mol_id['canonical_isomeric_explicit_hydrogen_smiles'] == '[H][O][C@@]([F])([N]([H])[H])[C]([H])([H])[H]'
+    assert mol_id['canonical_isomeric_explicit_hydrogen_mapped_smiles'] == '[C:1]([C@:2]([N:3]([H:9])[H:10])([O:4][H:11])[F:5])([H:6])([H:7])[H:8]'
+
+
+

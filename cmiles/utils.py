@@ -372,10 +372,12 @@ def _get_extension(filename):
 
 def is_mapped(molecule):
 
-    if isinstance(molecule, Chem.Mol):
-        backend = 'rdkit'
-    if isinstance(molecule, (oechem.OEMol, oechem.OEGraphMol, oechem.OEMolBase)):
-        backend = 'openeye'
+    if has_rdkit:
+        if isinstance(molecule, Chem.Mol):
+            backend = 'rdkit'
+    if has_openeye:
+        if isinstance(molecule, (oechem.OEMol, oechem.OEGraphMol, oechem.OEMolBase)):
+            backend = 'openeye'
     IS_MAPPED = True
     for atom in molecule.GetAtoms():
         if backend == 'openeye':
@@ -401,10 +403,12 @@ def remove_map(molecule):
     -------
 
     """
-    if isinstance(molecule, Chem.Mol):
-        backend = 'rdkit'
-    if isinstance(molecule, (oechem.OEMol, oechem.OEGraphMol, oechem.OEMolBase)):
-        backend = 'openeye'
+    if has_rdkit:
+        if isinstance(molecule, Chem.Mol):
+            backend = 'rdkit'
+    if has_openeye:
+        if isinstance(molecule, (oechem.OEMol, oechem.OEGraphMol, oechem.OEMolBase)):
+            backend = 'openeye'
     for a in molecule.GetAtoms():
         if backend == 'openeye':
             a.SetMapIdx(0)

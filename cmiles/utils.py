@@ -106,7 +106,7 @@ def load_molecule(inp_molecule, backend='openeye'):
     """
     if isinstance(inp_molecule, dict):
         # This is a JSON molecule. Currently only the rdkit backend is working for this.
-        molecule = mol_from_json(inp_molecule, backend='rdkit')
+        molecule = mol_from_json(inp_molecule)
 
     elif backend == 'rdkit':
         if not has_rdkit:
@@ -184,37 +184,37 @@ def _load_mol_oe(inp_molecule):
     return molecule
 
 
-def mol_from_json(inp_molecule, backend='rdkit'):
-    """
-    Load a molecule from QCSchema
-    The input JSON should use QCSchema specs (https://molssi-qc-schema.readthedocs.io/en/latest/index.html#)
-
-    Parameters
-    ----------
-    inp_molecule: dict
-       Required keys are symbols, connectivity and/or geometry. If using RDKit as backend, must have connectivity.
-    backend: str, optional. Default openeye
-        Specify which cheminformatics toolkit to use. Options are openeye and rdkit.
-
-    Returns
-    -------
-    molecule: Either OEMol or rdkit.Chem.Mol
-
-    """
-    # Check fields
-    if 'symbols' not in inp_molecule:
-        raise KeyError("JSON input molecule must have symbols")
-    if backend == 'openeye':
-        # openeye is currently not working. Load an rdkit molecule and convert to openeye
-        warnings.warn("Loading a molecule from JSON and retaining the stereochemistry currently only works with RDKit."
-                      "Loading an RDkit molecule. It will be converted to an oemol ")
-        molecule = _mol_from_json_rd(inp_molecule)
-    elif backend == 'rdkit':
-        molecule = _mol_from_json_rd(inp_molecule)
-    else:
-        raise ValueError("Only openeye and rdkit backends are supported")
-
-    return molecule
+# def mol_from_json(inp_molecule, backend='rdkit'):
+#     """
+#     Load a molecule from QCSchema
+#     The input JSON should use QCSchema specs (https://molssi-qc-schema.readthedocs.io/en/latest/index.html#)
+#
+#     Parameters
+#     ----------
+#     inp_molecule: dict
+#        Required keys are symbols, connectivity and/or geometry. If using RDKit as backend, must have connectivity.
+#     backend: str, optional. Default openeye
+#         Specify which cheminformatics toolkit to use. Options are openeye and rdkit.
+#
+#     Returns
+#     -------
+#     molecule: Either OEMol or rdkit.Chem.Mol
+#
+#     """
+#     # Check fields
+#     if 'symbols' not in inp_molecule:
+#         raise KeyError("JSON input molecule must have symbols")
+#     if backend == 'openeye':
+#         # openeye is currently not working. Load an rdkit molecule and convert to openeye
+#         warnings.warn("Loading a molecule from JSON and retaining the stereochemistry currently only works with RDKit."
+#                       "Loading an RDkit molecule. It will be converted to an oemol ")
+#         molecule = _mol_from_json_rd(inp_molecule)
+#     elif backend == 'rdkit':
+#         molecule = _mol_from_json_rd(inp_molecule)
+#     else:
+#         raise ValueError("Only openeye and rdkit backends are supported")
+#
+#     return molecule
 
 # ToDo find out from openeye support how to get this to work.
 # def _mol_from_json_oe(inp_molecule):
@@ -303,7 +303,7 @@ def mol_from_json(inp_molecule, backend='rdkit'):
 #     return molecule
 #
 
-def _mol_from_json_rd(inp_molecule):
+def mol_from_json(inp_molecule):
     """
     Generate RDkit.Chem.Mol from QCSchema molecule specs.
     Parameters
@@ -355,7 +355,7 @@ def _mol_from_json_rd(inp_molecule):
         initial_conformer_id = molecule.AddConformer(conformer, assignId=True)
         # Assign stereochemistry from coordinates
         from rdkit.Chem import rdmolops
-        rdmolops.AssignAtomChiralTagsFromStructure(molecule, confId=initial_conformer_id, replaceExistingTags=True)
+        rdmolops.AssignStereochemistryFrom3D(molecule, confId=initial_conformer_id, replaceExistingTags=True)
         # Add a tag to keep current order
         molecule.SetProp("_json_geometry", '1')
 

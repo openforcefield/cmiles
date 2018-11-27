@@ -182,7 +182,6 @@ def to_canonical_smiles_rd(molecule, isomeric, explicit_hydrogen, mapped):
     if isomeric and not json_geometry:
         # Make sure molecule has isomeric information
         # If molecule already has isomeric information, keep it.
-        # ToDo assign chiral tags from structure if structure exists
 
         # First find chiral centers
         chiral_centers = rd.Chem.FindMolChiralCenters(molecule, includeUnassigned=True)

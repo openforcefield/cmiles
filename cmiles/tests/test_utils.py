@@ -52,29 +52,29 @@ def test_is_mapped_rd():
     assert cmiles.utils.is_mapped(mapped_mol) == False
 
 
-# @using_openeye
-# def test_mol_from_json_oe():
-#     """Test oemol from json"""
-#     import numpy as np
-#     hooh = {
-#         'symbols': ['H', 'O', 'O', 'H'],
-#         'geometry': [
-#              1.84719633,  1.47046223,  0.80987166,
-#              1.3126021,  -0.13023157, -0.0513322,
-#             -1.31320906,  0.13130216, -0.05020593,
-#             -1.83756335, -1.48745318,  0.80161212
-#         ],
-#         'name': 'HOOH',
-#         'connectivity': [[0, 1, 1], [1, 2, 1], [2, 3, 1]],
-#     }
-#     oe_mol = cmiles.utils.load_molecule(hooh)
-#     assert oe_mol.GetMaxAtomIdx() == 4
-#     assert oe_mol.GetMaxBondIdx() == 3
-#     coordinates = oe_mol.GetCoords()
-#     geometry = np.array(hooh['geometry'], dtype=float).reshape(int(len(hooh['geometry'])/3), 3)*cmiles.utils.BOHR_2_ANGSTROM
-#     for i in range(len(coordinates)):
-#         for j in range(3):
-#             assert coordinates[i][j] == pytest.approx(geometry[i][j], 0.0000001)
+@using_openeye
+def test_mol_from_json_oe():
+    """Test oemol from json"""
+    import numpy as np
+    hooh = {
+        'symbols': ['H', 'O', 'O', 'H'],
+        'geometry': [
+             1.84719633,  1.47046223,  0.80987166,
+             1.3126021,  -0.13023157, -0.0513322,
+            -1.31320906,  0.13130216, -0.05020593,
+            -1.83756335, -1.48745318,  0.80161212
+        ],
+        'name': 'HOOH',
+        'connectivity': [[0, 1, 1], [1, 2, 1], [2, 3, 1]],
+    }
+    oe_mol = cmiles.utils.load_molecule(hooh)
+    assert oe_mol.GetMaxAtomIdx() == 4
+    assert oe_mol.GetMaxBondIdx() == 3
+    coordinates = oe_mol.GetCoords()
+    geometry = np.array(hooh['geometry'], dtype=float).reshape(int(len(hooh['geometry'])/3), 3)*cmiles.utils.BOHR_2_ANGSTROM
+    for i in range(len(coordinates)):
+        for j in range(3):
+            assert coordinates[i][j] == pytest.approx(geometry[i][j], 0.0000001)
 
 
 @using_rdkit

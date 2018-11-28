@@ -379,3 +379,62 @@ def test_input_mapped():
     mol_2 = cmiles.utils.load_molecule(mol_id['canonical_isomeric_explicit_hydrogen_mapped_smiles'], backend='rdkit')
     assert cmiles.utils.is_mapped(mol_1, backend='rdkit') == False
     assert cmiles.utils.is_mapped(mol_2, backend='rdkit') == True
+
+
+@using_openeye
+def _chemical_formula_oe(smiles):
+    from openeye import oechem
+    molecule = cmiles.utils.load_molecule(smiles, backend='openeye')
+    oechem.OEAddExplicitHydrogens(molecule)
+    return (cmiles.generator.molecular_formula(molecule))
+
+@using_rdkit
+def _chemical_formula_rd(smiles):
+    from rdkit import Chem
+    molecule = cmiles.utils.load_molecule(smiles, backend='rdkit')
+    molecule = Chem.AddHs(molecule)
+    return (cmiles.generator.molecular_formula(molecule))
+
+@using_rdkit
+@using_openeye
+@pytest.mark.parametrize("backend", [_chemical_formula_oe, _chemical_formula_rd])
+@pytest.mark.parametrize("smiles, bench", [("CCCC", "C4H10"), ("C", "CH4"), ("CC(Br)(Br)", "C2H4Br2")]) # This uncovered a bug in load_molecule. The period makes it look like a filename
+                                                               #  ("[Li+].[Li+].[O2-]", "LiO2")]) ToDo fix this bug
+def test_molecule_formula(backend, smiles, bench):
+    assert backend(smiles) == bench
+
+@pytest.mark.parametrize('state1, state2',
+                          [('CC(=O)O','CC(=O)[O-]'), # protonation states
+                           ('CN4CCN(c2nc1cc(Cl)ccc1[nH]c3ccccc23)CC4', 'CN4CCN(c2[nH]c1cc(Cl)ccc1nc3ccccc23)CC4'), # 1,5 tautomerism
+                           ('CC=CC(=O)C', 'CC(=CC=C)O'), #keto-enol
+                           ('NC=O', 'N=CO'), # amide - imidic
+                           ('C1CC(=O)NC1', 'C1CC(O)=NC1'), # lactam-lactim
+                           ('NCC(=O)O', '[NH3+]CC(=O)[O-]'),# amino acid
+                           ('C1=CN=CNC1=O', 'C1=CNC=NC1=O'), # pyrimodone
+                           ('C1=CN=CNC1=O', 'C1=CN=CN=C1O'),# pyrimodol - pytimodone
+                           ('C1=NC=NN1','N1C=NN=C1' ), #triazole
+                           ('C1(=NC(=NC(=N1)O)O)O', 'C1(NC(NC(N1)=O)=O)=O'), # cyanic - cyanuric
+                           ('CC(=O)S[H]', 'CC(=S)O[H]'),
+                           ('CC(=O)S[H]', 'CC(=O)[S-]'),
+                           ('CC(=O)S[H])', 'CC(=S)[O-]'),
+                           ('C[N](=O)=O', 'C[N+]([O-])=O'),# nitromethane
+                           ('CN=[N]#N', 'CN=[N+]=[N-]'),  # azide
+                           ('C[S](C)(=O)=O', 'C[S++](C)([O-])[O-]'), # sulfone
+                           ('C[P](C)(=O)[O-]', 'C[P+](C)([O-])[O-]'), # phosphinate
+                           ('OC=C', 'O=CC'), # keto-enol
+                           ('[H]NC=C', '[H]N=CC'), # imine - enamine
+                           ('CN=O', 'C=NO'), # nitoroso-oxime
+                           ('C1=CC(NN1)=O','C1=NNC(C1)=O' ),# pyrazolone
+                           ('C1=CC(NN1)=O', 'C1(=CC=N[N]1[H])O'), # pyrazolone
+                           ('C1(=NC=CNC=C1)C', 'C1(=CC=NC=CN1)C'),# diazepine
+                           ('C1=CC=C(O1)O','C1=CCC(O1)=O' ), #furanol-furanone
+                           ('C1=CC(=CO1)O', 'C1=CC(CO1)=O')#  furanol - furanone
+                           ])
+
+@using_openeye
+def test_unique_protomer(state1, state2):
+    """Test unique protomer"""
+    mol_1 = cmiles.utils.load_molecule(state1)
+    mol_2 = cmiles.utils.load_molecule(state2)
+    assert cmiles.get_unique_protomer(mol_1) == cmiles.get_unique_protomer(mol_2)
+

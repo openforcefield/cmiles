@@ -381,48 +381,38 @@ def test_input_mapped():
     assert cmiles.utils.is_mapped(mol_2) == True
 
 
-# @using_openeye
-# def test_geom_from_json():
-#     hooh = {
-#         'symbols': ['H', 'O', 'O', 'H'],
-#         'geometry': [
-#              1.84719633,  1.47046223,  0.80987166,
-#              1.3126021,  -0.13023157, -0.0513322,
-#             -1.31320906,  0.13130216, -0.05020593,
-#             -1.83756335, -1.48745318,  0.80161212
-#         ],
-#         'name': 'HOOH',
-#         'connectivity': [[0, 1, 1], [1, 2, 1], [2, 3, 1]],
-#     }
-#     molecule = cmiles.utils.load_molecule(hooh)
-#     id_1 = cmiles.to_molecule_id(molecule)
-#     molecule.SetData("json_geometry", False)
-#     id_2 = cmiles.to_molecule_id(molecule)
-#
-#     assert id_1['canonical_isomeric_explicit_hydrogen_mapped_smiles'] == '[H:1][O:2][O:3][H:4]'
-#     assert id_2['canonical_isomeric_explicit_hydrogen_mapped_smiles'] == '[H:3][O:1][O:2][H:4]'
+def _map_from_json(hooh, backend, map_smiles):
 
-@using_rdkit
-def test_geom_from_rd():
-    hooh = {
-        'symbols': ['H', 'O', 'O', 'H'],
-        'geometry': [
-             1.84719633,  1.47046223,  0.80987166,
-             1.3126021,  -0.13023157, -0.0513322,
-            -1.31320906,  0.13130216, -0.05020593,
-            -1.83756335, -1.48745318,  0.80161212
-        ],
-        'name': 'HOOH',
-        'connectivity': [[0, 1, 1], [1, 2, 1], [2, 3, 1]],
-    }
-    molecule = cmiles.utils.load_molecule(hooh, backend='rdkit')
-
-    id_1 = cmiles.to_molecule_id(molecule, canonicalization='rdkit')
-    molecule.SetProp("_json_geometry", '0')
-    id_2 = cmiles.to_molecule_id(molecule, canonicalization='rdkit')
+    molecule = cmiles.utils.load_molecule(hooh, backend=backend)
+    id_1 = cmiles.to_molecule_id(molecule, canonicalization=backend)
+    if backend == 'openeye':
+        molecule.SetData("json_geometry", False)
+    if backend == 'rdkit':
+        molecule.SetProp("_json_geometry", '0')
+    id_2 = cmiles.to_molecule_id(molecule, canonicalization=backend)
 
     assert id_1['canonical_isomeric_explicit_hydrogen_mapped_smiles'] == '[H:1][O:2][O:3][H:4]'
-    assert id_2['canonical_isomeric_explicit_hydrogen_mapped_smiles'] == '[H:1][O:3][O:4][H:2]'
+    assert id_2['canonical_isomeric_explicit_hydrogen_mapped_smiles'] == map_smiles
+
+@using_openeye
+@using_rdkit
+@pytest.mark.parametrize("backend, map_smiles", [('openeye', '[H:3][O:1][O:2][H:4]'),
+                                                 ('rdkit', '[H:1][O:3][O:4][H:2]')])
+def test_map_order(backend, map_smiles):
+    hooh = {
+    'symbols': ['H', 'O', 'O', 'H'],
+    'geometry': [
+         1.84719633,  1.47046223,  0.80987166,
+         1.3126021,  -0.13023157, -0.0513322,
+        -1.31320906,  0.13130216, -0.05020593,
+        -1.83756335, -1.48745318,  0.80161212
+    ],
+    'name': 'HOOH',
+    'connectivity': [[0, 1, 1], [1, 2, 1], [2, 3, 1]],
+    }
+
+    _map_from_json(hooh=hooh, backend=backend, map_smiles=map_smiles)
+
 
 @using_openeye
 @using_rdkit
@@ -455,8 +445,6 @@ def test_keep_chiral_stereo():
                   [3, 10, 1]]
                 }
 
-    # load as rdkit molecule
-    # ToDo Get the Openeye one to work. Currently it's not perceiving stereochemsitry from geometry and some other things seem to be off
     mol_id = cmiles.to_molecule_id(json_mol)
 
     assert mol_id['canonical_smiles'] == 'CC(N)(O)F'
@@ -515,9 +503,9 @@ def test_keep_chiral_stereo():
 
 @using_openeye
 @using_rdkit
-def test_bond_steroe():
+def test_bond_stereo():
     """Test bond steroe from json molecule"""
-    json_mol = {'symbols': ['C', 'C', 'F', 'Cl', 'H', 'H'],
+    json_mol_from_oe_map = {'symbols': ['C', 'C', 'F', 'Cl', 'H', 'H'],
                 'geometry': [0.7558174176630313,
                               -0.9436196701031863,
                               -0.5135812331847833,
@@ -540,25 +528,50 @@ def test_bond_steroe():
                 'molecular_multiplicity': 1,
                 'connectivity': [[0, 1, 2], [0, 2, 1], [1, 3, 1], [0, 4, 1], [1, 5, 1]]}
 
-    # load as rdkit molecule
-    # ToDo Get the Openeye one to work. Currently it's not perceiving stereochemsitry from geometry and some other things seem to be off
-    mol_id = cmiles.to_molecule_id(json_mol)
+    json_mol_from_rd_map = {'symbols': ['H', 'H', 'F', 'Cl', 'C', 'C'],
+                            'geometry': [1.6921967038297914,
+                            -0.786834118158881,
+                            -2.319716469002742,
+                            -1.6036583681666305,
+                            0.5072991602038667,
+                            2.4076517490881173,
+                            1.2485802802219408,
+                            -3.180729126504143,
+                            0.5903747404566769,
+                            -1.3805989906253051,
+                            3.6349234648338813,
+                            -0.7522673418877901,
+                            0.7558174176630313,
+                            -0.9436196701031863,
+                            -0.5135812331847833,
+                            -0.7123369866046005,
+                            0.7689600644555532,
+                            0.5875385545305212],
+                            'molecular_charge': 0,
+                            'molecular_multiplicity': 1,
+                            'connectivity': [[4, 5, 2], [4, 2, 1], [5, 3, 1], [4, 0, 1], [5, 1, 1]],}
 
-    assert mol_id['canonical_smiles'] == 'C(=CCl)F'
-    assert mol_id['canonical_isomeric_smiles'] == 'C(=C/Cl)\\F'
-    assert mol_id['canonical_isomeric_explicit_hydrogen_smiles'] == '[H]/C(=C(/[H])\\Cl)/F'
-    assert mol_id['canonical_isomeric_explicit_hydrogen_mapped_smiles'] == '[H:5]/[C:1](=[C:2](/[H:6])\\[Cl:4])/[F:3]'
+    id_oe_to_oe = cmiles.to_molecule_id(json_mol_from_oe_map, canonicalization='openeye')
+    id_oe_to_rd = cmiles.to_molecule_id(json_mol_from_oe_map, canonicalization='rdkit')
+    id_rd_to_oe = cmiles.to_molecule_id(json_mol_from_rd_map, canonicalization='openeye')
+    id_rd_to_rd = cmiles.to_molecule_id(json_mol_from_rd_map, canonicalization='rdkit')
 
-    # generate rd canonicalized smiles - the order should still be as before even though that is not the rdkit canonical
-    # order. We want to retain the order for json molecules to their geometry
-    mol_id = cmiles.to_molecule_id(json_mol, canonicalization='rdkit')
-    assert mol_id['canonical_smiles'] == 'FC=CCl'
-    assert mol_id['canonical_isomeric_smiles'] == 'F/C=C/Cl'
-    assert mol_id['canonical_isomeric_explicit_hydrogen_smiles'] == '[H]/[C]([F])=[C](/[H])[Cl]'
-    assert mol_id['canonical_isomeric_explicit_hydrogen_mapped_smiles'] == '[C:1](=[C:2](/[Cl:4])[H:6])(\\[F:3])[H:5]'
+    assert id_oe_to_oe['canonical_smiles'] == id_rd_to_oe['canonical_smiles'] == 'C(=CCl)F'
+    assert id_oe_to_oe['canonical_isomeric_smiles'] == id_rd_to_oe['canonical_isomeric_smiles'] == 'C(=C/Cl)\\F'
+    assert id_oe_to_oe['canonical_explicit_hydrogen_smiles'] == id_rd_to_oe['canonical_explicit_hydrogen_smiles'] == '[H]C(=C([H])Cl)F'
+    assert id_oe_to_oe['canonical_isomeric_explicit_hydrogen_smiles'] == id_rd_to_oe['canonical_isomeric_explicit_hydrogen_smiles'] == '[H]/C(=C(/[H])\\Cl)/F'
+    assert id_oe_to_oe['canonical_isomeric_explicit_hydrogen_mapped_smiles'] == '[H:5]/[C:1](=[C:2](/[H:6])\\[Cl:4])/[F:3]'
+    assert id_rd_to_oe['canonical_isomeric_explicit_hydrogen_mapped_smiles'] == '[H:1]/[C:5](=[C:6](/[H:2])\\[Cl:4])/[F:3]'
+
+    assert id_oe_to_rd['canonical_smiles'] == id_rd_to_rd['canonical_smiles'] == 'FC=CCl'
+    assert id_oe_to_rd['canonical_isomeric_smiles'] == id_rd_to_rd['canonical_isomeric_smiles'] == 'F/C=C/Cl'
+    assert id_oe_to_rd['canonical_explicit_hydrogen_smiles'] == id_rd_to_rd['canonical_explicit_hydrogen_smiles'] == '[H][C]([F])=[C]([H])[Cl]'
+    assert id_oe_to_rd['canonical_isomeric_explicit_hydrogen_smiles'] == id_rd_to_rd['canonical_isomeric_explicit_hydrogen_smiles'] == '[H]/[C]([F])=[C](/[H])[Cl]'
+    assert id_oe_to_rd['canonical_isomeric_explicit_hydrogen_mapped_smiles'] == '[C:1](=[C:2](/[Cl:4])[H:6])(\\[F:3])[H:5]'
+    assert id_rd_to_rd['canonical_isomeric_explicit_hydrogen_mapped_smiles'] == '[H:1]/[C:5]([F:3])=[C:6](/[H:2])[Cl:4]'
 
     # Now the other stereoisomer
-    json_mol = {'symbols': ['C', 'C', 'F', 'Cl', 'H', 'H'],
+    json_mol_from_oe_map = {'symbols': ['C', 'C', 'F', 'Cl', 'H', 'H'],
                  'geometry': [0.7558174176630313,
                   -0.9436196701031863,
                   -0.5135812331847833,
@@ -581,20 +594,48 @@ def test_bond_steroe():
                  'molecular_multiplicity': 1,
                  'connectivity': [[0, 1, 2], [0, 2, 1], [1, 3, 1], [0, 4, 1], [1, 5, 1]]
                 }
-    mol_id = cmiles.to_molecule_id(json_mol)
+    json_mol_from_rd_map = {'symbols': ['H', 'H', 'F', 'Cl', 'C', 'C'],
+                            'geometry': [1.6921967038297914,
+                            -0.786834118158881,
+                            -2.319716469002742,
+                            -1.1578923904597032,
+                            2.5868975732566115,
+                            -0.2324103574431031,
+                            1.2485802802219408,
+                            -3.180729126504143,
+                            0.5903747404566769,
+                            -2.098028327659392,
+                            0.3039736895037833,
+                            3.4718143896933764,
+                            0.7558174176630313,
+                            -0.9436196701031863,
+                            -0.5135812331847833,
+                            -0.7123369866046005,
+                            0.7689600644555532,
+                            0.5875385545305212],
+                            'molecular_charge': 0,
+                            'molecular_multiplicity': 1,
+                            'connectivity': [[4, 5, 2], [4, 2, 1], [5, 3, 1], [4, 0, 1], [5, 1, 1]]}
 
-    assert mol_id['canonical_smiles'] == 'C(=CCl)F'
-    assert mol_id['canonical_isomeric_smiles'] == 'C(=C\\Cl)\\F'
-    assert mol_id['canonical_isomeric_explicit_hydrogen_smiles'] == '[H]/C(=C(\\[H])/Cl)/F'
-    assert mol_id['canonical_isomeric_explicit_hydrogen_mapped_smiles'] == '[H:5]/[C:1](=[C:2](\\[H:6])/[Cl:4])/[F:3]'
+    id_oe_to_oe = cmiles.to_molecule_id(json_mol_from_oe_map, canonicalization='openeye')
+    id_oe_to_rd = cmiles.to_molecule_id(json_mol_from_oe_map, canonicalization='rdkit')
+    id_rd_to_oe = cmiles.to_molecule_id(json_mol_from_rd_map, canonicalization='openeye')
+    id_rd_to_rd = cmiles.to_molecule_id(json_mol_from_rd_map, canonicalization='rdkit')
 
-    # generate rd canonicalized smiles - the order should still be as before even though that is not the rdkit canonical
-    # order. We want to retain the order for json molecules to their geometry
-    mol_id = cmiles.to_molecule_id(json_mol, canonicalization='rdkit')
-    assert mol_id['canonical_smiles'] == 'FC=CCl'
-    assert mol_id['canonical_isomeric_smiles'] == 'F/C=C\\Cl'
-    assert mol_id['canonical_isomeric_explicit_hydrogen_smiles'] == '[H]/[C]([F])=[C](\\[H])[Cl]'
-    assert mol_id['canonical_isomeric_explicit_hydrogen_mapped_smiles'] == '[C:1](=[C:2](\\[Cl:4])[H:6])(\\[F:3])[H:5]'
+    assert id_oe_to_oe['canonical_smiles'] == id_rd_to_oe['canonical_smiles'] == 'C(=CCl)F'
+    assert id_oe_to_oe['canonical_isomeric_smiles'] == id_rd_to_oe['canonical_isomeric_smiles'] == 'C(=C\\Cl)\\F'
+    assert id_oe_to_oe['canonical_explicit_hydrogen_smiles'] == id_rd_to_oe['canonical_explicit_hydrogen_smiles'] == '[H]C(=C([H])Cl)F'
+    assert id_oe_to_oe['canonical_isomeric_explicit_hydrogen_smiles'] == id_rd_to_oe['canonical_isomeric_explicit_hydrogen_smiles'] == '[H]/C(=C(\\[H])/Cl)/F'
+    assert id_oe_to_oe['canonical_isomeric_explicit_hydrogen_mapped_smiles'] == '[H:5]/[C:1](=[C:2](\\[H:6])/[Cl:4])/[F:3]'
+    assert id_rd_to_oe['canonical_isomeric_explicit_hydrogen_mapped_smiles'] == '[H:1]/[C:5](=[C:6](\\[H:2])/[Cl:4])/[F:3]'
+
+    assert id_oe_to_rd['canonical_smiles'] == id_rd_to_rd['canonical_smiles'] == 'FC=CCl'
+    assert id_oe_to_rd['canonical_isomeric_smiles'] == id_rd_to_rd['canonical_isomeric_smiles'] == 'F/C=C\\Cl'
+    assert id_oe_to_rd['canonical_explicit_hydrogen_smiles'] == id_rd_to_rd['canonical_explicit_hydrogen_smiles'] == '[H][C]([F])=[C]([H])[Cl]'
+    assert id_oe_to_rd['canonical_isomeric_explicit_hydrogen_smiles'] == id_rd_to_rd['canonical_isomeric_explicit_hydrogen_smiles'] == '[H]/[C]([F])=[C](\\[H])[Cl]'
+    assert id_oe_to_rd['canonical_isomeric_explicit_hydrogen_mapped_smiles'] == '[C:1](=[C:2](\\[Cl:4])[H:6])(\\[F:3])[H:5]'
+    assert id_rd_to_rd['canonical_isomeric_explicit_hydrogen_mapped_smiles'] == '[H:1]/[C:5]([F:3])=[C:6](\\[H:2])[Cl:4]'
+
 
 @using_openeye
 def _chemical_formula_oe(smiles):

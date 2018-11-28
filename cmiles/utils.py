@@ -106,7 +106,7 @@ def load_molecule(inp_molecule, backend='openeye'):
     """
     if isinstance(inp_molecule, dict):
         # This is a JSON molecule. Currently only the rdkit backend is working for this.
-        molecule = mol_from_json(inp_molecule)
+        molecule = mol_from_json(inp_molecule, backend=backend)
 
     elif backend == 'rdkit':
         if not has_rdkit:
@@ -184,126 +184,95 @@ def _load_mol_oe(inp_molecule):
     return molecule
 
 
-# def mol_from_json(inp_molecule, backend='rdkit'):
-#     """
-#     Load a molecule from QCSchema
-#     The input JSON should use QCSchema specs (https://molssi-qc-schema.readthedocs.io/en/latest/index.html#)
-#
-#     Parameters
-#     ----------
-#     inp_molecule: dict
-#        Required keys are symbols, connectivity and/or geometry. If using RDKit as backend, must have connectivity.
-#     backend: str, optional. Default openeye
-#         Specify which cheminformatics toolkit to use. Options are openeye and rdkit.
-#
-#     Returns
-#     -------
-#     molecule: Either OEMol or rdkit.Chem.Mol
-#
-#     """
-#     # Check fields
-#     if 'symbols' not in inp_molecule:
-#         raise KeyError("JSON input molecule must have symbols")
-#     if backend == 'openeye':
-#         # openeye is currently not working. Load an rdkit molecule and convert to openeye
-#         warnings.warn("Loading a molecule from JSON and retaining the stereochemistry currently only works with RDKit."
-#                       "Loading an RDkit molecule. It will be converted to an oemol ")
-#         molecule = _mol_from_json_rd(inp_molecule)
-#     elif backend == 'rdkit':
-#         molecule = _mol_from_json_rd(inp_molecule)
-#     else:
-#         raise ValueError("Only openeye and rdkit backends are supported")
-#
-#     return molecule
+def mol_from_json(inp_molecule, backend='openeye'):
+    """
+    Load a molecule from QCSchema
+    The input JSON should use QCSchema specs (https://molssi-qc-schema.readthedocs.io/en/latest/index.html#)
+    Required fields to generate CMILES identiifers are symbols, connectivity and geometry.
 
-# ToDo find out from openeye support how to get this to work.
-# def _mol_from_json_oe(inp_molecule):
-#     """
-#     Generate OEMol from QCSchema molecule specs
-#     Parameters
-#     ----------
-#     inp_molecule: dict
-#         Must have symbols and connectivity and/or geometry
-#         Note: If geometry is given, the molecule will have a tag indicating that the goemetry came from QCSchema. This
-#         will ensure that the order of the atoms and configuration is not change for generation of mapped SMILES and
-#         isomeric SMILES.
-#
-#     Returns
-#     -------
-#     molecule: OEMol
-#
-#     """
-#
-#     if not has_openeye:
-#         raise RuntimeError("You do not have OpenEye installed or do not have license to use it. Use the RDKit backend")
-#
-#     molecule = oechem.OEMol()
-#     symbols = inp_molecule['symbols']
-#
-#     for s in symbols:
-#         molecule.NewAtom(_symbols[s])
-#
-#     # Add connectivity
-#     # OpenEye in principle should be able to percieve connectivity only from geometry but I havent' been able to get it
-#     # to work. ToDo create molecular graph from geometry
-#     #has_connectivity = False
-#     #if 'connectivity' in inp_molecule:
-#     #has_connectivity = True
-#     connectivity = inp_molecule['connectivity']
-#     for bond in connectivity:
-#         a1 = molecule.GetAtom(oechem.OEHasAtomIdx(bond[0]))
-#         a2 = molecule.GetAtom(oechem.OEHasAtomIdx(bond[1]))
-#         molecule.NewBond(a1, a2, bond[-1])
-#
-#     # Add geometry if it exists
-#     has_geometry = False
-#     if 'geometry' in inp_molecule:
-#         has_geometry = True
-#         # Convert to Angstroms
-#         geometry = np.asarray(inp_molecule['geometry'])*BOHR_2_ANGSTROM
-#         if molecule.NumAtoms() != geometry.shape[0]/3:
-#             raise ValueError("Number of atoms in molecule does not match length of position array")
-#
-#         #conf = molecule.GetConfs().next()
-#         #conf.SetCoords(oechem.OEFloatArray(geometry))
-#         molecule.SetCoords(oechem.OEFloatArray(geometry))
-#         # Add tag that the geometry is from JSON and shouldn't be changed.
-#         geom_tag = oechem.OEGetTag("json_geometry")
-#         molecule.SetData(geom_tag, True)
-#
-#         oechem.OEDetermineConnectivity(molecule)
-#         oechem.OEFindRingAtomsAndBonds(molecule)
-#         oechem.OEPerceiveBondOrders(molecule)
-#         oechem.OEAssignImplicitHydrogens(molecule)
-#         oechem.OEAssignFormalCharges(molecule)
-#         oechem.OEAssignAromaticFlags(molecule)
-#         # perceive stereochemistry
-#         print(oechem.OEMolToSmiles(molecule))
-#         oechem.OEPerceiveChiral(molecule)
-#         oechem.OE3DToAtomStereo(molecule)
-#         oechem.OE3DToBondStereo(molecule)
-#         # try generating conformer
-#         molecule = generate_conformers(molecule, max_confs=1, strict_stereo=True, strict_types=False, canon_order=False)
-#         oechem.OEPerceiveChiral(molecule)
-#         oechem.OE3DToAtomStereo(molecule)
-#         oechem.OE3DToBondStereo(molecule)
-#         print(oechem.OEMolToSmiles(molecule))
-#         # if not has_connectivity:
-#         #     # Have to perceive connectivity from coordinates
-#         #     # This is currently not working.
-#         #     oechem.OEDetermineConnectivity(molecule)
-#         #     oechem.OEFindRingAtomsAndBonds(molecule)
-#         #     oechem.OEPerceiveBondOrders(molecule)
-#         #     oechem.OEAssignImplicitHydrogens(molecule)
-#         #     oechem.OEAssignFormalCharges(molecule)
-#
-#     # if not has_geometry and not has_connectivity:
-#     #     raise RuntimeError("Not enough information to generate molecular graph. Geometry or connectivity must be provided")
-#
-#     return molecule
-#
+    Parameters
+    ----------
+    inp_molecule: dict
+       Required keys are symbols, connectivity and/or geometry. If using RDKit as backend, must have connectivity.
+    backend: str, optional. Default openeye
+        Specify which cheminformatics toolkit to use. Options are openeye and rdkit.
 
-def mol_from_json(inp_molecule):
+    Returns
+    -------
+    molecule: Either OEMol or rdkit.Chem.Mol
+
+    """
+    # Check fields
+    required_fields = ['symbols', 'geometry', 'connectivity']
+    for key in required_fields:
+        if key not in inp_molecule:
+            raise KeyError("input molecule must have {}".format(key))
+    if backend == 'openeye':
+        molecule = _mol_from_json_oe(inp_molecule)
+    elif backend == 'rdkit':
+        molecule = _mol_from_json_rd(inp_molecule)
+    else:
+        raise ValueError("Only openeye and rdkit backends are supported")
+
+    return molecule
+
+
+def _mol_from_json_oe(inp_molecule):
+    """
+    Generate OEMol from QCSchema molecule specs
+    Parameters
+    ----------
+    inp_molecule: dict
+        Must have symbols and connectivity and/or geometry
+        Note: If geometry is given, the molecule will have a tag indicating that the goemetry came from QCSchema. This
+        will ensure that the order of the atoms and configuration is not change for generation of mapped SMILES and
+        isomeric SMILES.
+
+    Returns
+    -------
+    molecule: OEMol
+
+    """
+
+    if not has_openeye:
+        raise RuntimeError("You do not have OpenEye installed or do not have license to use it. Use the RDKit backend")
+
+    molecule = oechem.OEMol()
+    symbols = inp_molecule['symbols']
+    connectivity = inp_molecule['connectivity']
+    # Convert to Angstroms
+    geometry = np.asarray(inp_molecule['geometry'])*BOHR_2_ANGSTROM
+
+    for s in symbols:
+        molecule.NewAtom(_symbols[s])
+
+    # Add connectivity
+    for bond in connectivity:
+        a1 = molecule.GetAtom(oechem.OEHasAtomIdx(bond[0]))
+        a2 = molecule.GetAtom(oechem.OEHasAtomIdx(bond[1]))
+        molecule.NewBond(a1, a2, bond[-1])
+
+    # Add geometry
+    if molecule.NumAtoms() != geometry.shape[0]/3:
+        raise ValueError("Number of atoms in molecule does not match length of position array")
+
+    molecule.SetCoords(oechem.OEFloatArray(geometry))
+    molecule.SetDimension(3)
+
+    # Add tag that the geometry is from JSON and shouldn't be changed.
+    geom_tag = oechem.OEGetTag("json_geometry")
+    molecule.SetData(geom_tag, True)
+    oechem.OEDetermineConnectivity(molecule)
+    oechem.OEFindRingAtomsAndBonds(molecule)
+    oechem.OEPerceiveBondOrders(molecule)
+    oechem.OEAssignImplicitHydrogens(molecule)
+    oechem.OEAssignFormalCharges(molecule)
+    oechem.OEAssignAromaticFlags(molecule)
+
+    return molecule
+
+
+def _mol_from_json_rd(inp_molecule):
     """
     Generate RDkit.Chem.Mol from QCSchema molecule specs.
     Parameters
@@ -325,19 +294,16 @@ def mol_from_json(inp_molecule):
 
     symbols = inp_molecule['symbols']
     connectivity = inp_molecule['connectivity']
-    has_geometry = False
-    if 'geometry' in inp_molecule:
-        geometry = np.array(inp_molecule['geometry'], dtype=float).reshape(int(len(inp_molecule['geometry'])/3), 3)*BOHR_2_ANGSTROM
-        conformer = Chem.Conformer(len(symbols))
-        has_geometry = True
+    geometry = np.array(inp_molecule['geometry'], dtype=float).reshape(int(len(inp_molecule['geometry'])/3), 3)*BOHR_2_ANGSTROM
+    conformer = Chem.Conformer(len(symbols))
+    has_geometry = True
 
     molecule = Chem.Mol()
     em = Chem.RWMol(molecule)
     for i, s in enumerate(symbols):
         atom = em.AddAtom(Chem.Atom(_symbols[s]))
-        if has_geometry:
-            atom_position = Point3D(geometry[i][0], geometry[i][1], geometry[i][2])
-            conformer.SetAtomPosition(atom, atom_position)
+        atom_position = Point3D(geometry[i][0], geometry[i][1], geometry[i][2])
+        conformer.SetAtomPosition(atom, atom_position)
 
     # Add connectivity
     for bond in connectivity:

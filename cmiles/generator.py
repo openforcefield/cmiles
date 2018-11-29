@@ -406,6 +406,12 @@ def get_unique_protomer(molecule):
         raise ImportError("Must have OEChem license!")
     if not oequacpac.OEQuacPacIsLicensed():
         raise ImportError("Must have OEQuacPac license!")
+
+    if isinstance(molecule, rd.Chem.rdchem.Mol):
+        # convert to openeye molecule
+        smiles = rd.Chem.MolToSmiles(molecule)
+        molecule = oechem.OEMol()
+        oechem.OESmilesToMol(molecule, smiles)
     molecule_copy = deepcopy(molecule)
     oequacpac.OEGetUniqueProtomer(molecule_copy, molecule)
     return oechem.OEMolToSmiles(molecule_copy)

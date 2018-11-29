@@ -32,71 +32,71 @@ BOHR_2_ANGSTROM = 0.529177210
 ANGSROM_2_BOHR = 1. / BOHR_2_ANGSTROM
 
 
-def generate_conformers(molecule, max_confs=800, strict_stereo=True, ewindow=15.0, rms_threshold=1.0, strict_types=True,
-                        copy=True, canon_order=True):
-    """Generate conformations for the supplied molecule
-    Parameters
-    ----------
-    molecule : OEMol
-        Molecule for which to generate conformers
-    max_confs : int, optional, default=800
-        Max number of conformers to generate.  If None, use default OE Value.
-    strict_stereo : bool, optional, default=True
-        If False, permits smiles strings with unspecified stereochemistry.
-    strict_types : bool, optional, default=True
-        If True, requires that Omega have exact MMFF types for atoms in molecule; otherwise, allows the closest atom
-        type of the same element to be used.
-    Returns
-    -------
-    molcopy : OEMol
-        A multi-conformer molecule with up to max_confs conformers.
-    Notes
-    -----
-    Roughly follows
-    http://docs.eyesopen.com/toolkits/cookbook/python/modeling/am1-bcc.html
-    """
-    try:
-        from openeye import oechem, oeomega
-    except ImportError:
-        raise Warning("Could not import OpenEye. Need license for OpenEye!")
-    if copy:
-        molcopy = oechem.OEMol(molecule)
-    else:
-        molcopy = molecule
-    omega = oeomega.OEOmega()
-
-    # These parameters were chosen to match http://docs.eyesopen.com/toolkits/cookbook/python/modeling/am1-bcc.html
-    omega.SetMaxConfs(max_confs)
-    omega.SetIncludeInput(True)
-    omega.SetCanonOrder(canon_order)
-
-    omega.SetSampleHydrogens(True)  # Word to the wise: skipping this step can lead to significantly different charges!
-    omega.SetEnergyWindow(ewindow)
-    omega.SetRMSThreshold(rms_threshold)  # Word to the wise: skipping this step can lead to significantly different charges!
-
-    omega.SetStrictStereo(strict_stereo)
-    omega.SetStrictAtomTypes(strict_types)
-
-    omega.SetIncludeInput(False)  # don't include input
-    if max_confs is not None:
-        omega.SetMaxConfs(max_confs)
-
-    status = omega(molcopy)  # generate conformation
-    if not status:
-        raise(RuntimeError("omega returned error code %d" % status))
-
-    return molcopy
-
+# def generate_conformers(molecule, max_confs=800, strict_stereo=True, ewindow=15.0, rms_threshold=1.0, strict_types=True,
+#                         copy=True, canon_order=True):
+#     """Generate conformations for the supplied molecule
+#     Parameters
+#     ----------
+#     molecule : OEMol
+#         Molecule for which to generate conformers
+#     max_confs : int, optional, default=800
+#         Max number of conformers to generate.  If None, use default OE Value.
+#     strict_stereo : bool, optional, default=True
+#         If False, permits smiles strings with unspecified stereochemistry.
+#     strict_types : bool, optional, default=True
+#         If True, requires that Omega have exact MMFF types for atoms in molecule; otherwise, allows the closest atom
+#         type of the same element to be used.
+#     Returns
+#     -------
+#     molcopy : OEMol
+#         A multi-conformer molecule with up to max_confs conformers.
+#     Notes
+#     -----
+#     Roughly follows
+#     http://docs.eyesopen.com/toolkits/cookbook/python/modeling/am1-bcc.html
+#     """
+#     try:
+#         from openeye import oechem, oeomega
+#     except ImportError:
+#         raise Warning("Could not import OpenEye. Need license for OpenEye!")
+#     if copy:
+#         molcopy = oechem.OEMol(molecule)
+#     else:
+#         molcopy = molecule
+#     omega = oeomega.OEOmega()
+#
+#     # These parameters were chosen to match http://docs.eyesopen.com/toolkits/cookbook/python/modeling/am1-bcc.html
+#     omega.SetMaxConfs(max_confs)
+#     omega.SetIncludeInput(True)
+#     omega.SetCanonOrder(canon_order)
+#
+#     omega.SetSampleHydrogens(True)  # Word to the wise: skipping this step can lead to significantly different charges!
+#     omega.SetEnergyWindow(ewindow)
+#     omega.SetRMSThreshold(rms_threshold)  # Word to the wise: skipping this step can lead to significantly different charges!
+#
+#     omega.SetStrictStereo(strict_stereo)
+#     omega.SetStrictAtomTypes(strict_types)
+#
+#     omega.SetIncludeInput(False)  # don't include input
+#     if max_confs is not None:
+#         omega.SetMaxConfs(max_confs)
+#
+#     status = omega(molcopy)  # generate conformation
+#     if not status:
+#         raise(RuntimeError("omega returned error code %d" % status))
+#
+#     return molcopy
+#
 
 def load_molecule(inp_molecule, backend='openeye'):
     """
-    Load molecule. Input is very permissive. Can use SMILES, SMARTS, and file formats that OpenEye or RDKit can parse.
+    Load molecule. Input restrictive. Can use and isomeric SMILES or a JSON serialized molecule
 
     Parameters
     ----------
     inp_molecule: input molecule
-        Can be SMILES, filename, OpenEye or RDKit molecule, JSON molecule
-        for the JSON molecule, the minimum fields needed are symbols and geometry or symbols and connectivity
+        This can be either a SMILES with stereochemistry (isomeric SMILES) or a JSON serialized molecules.
+        for the JSON molecule, the minimum fields needed are symbols, connectivity and geometry.
 
     Returns
     -------
@@ -104,84 +104,99 @@ def load_molecule(inp_molecule, backend='openeye'):
         If has license to OpenEye, will return an OpenEye molecule. Otherwise will return a RDKit molecule if input can
         be parsed with RDKit.
     """
+    # Check input
+    if not isinstance(inp_molecule, (str, dict)):
+        raise TypeError("Input must be either a SMILES string or a JSON serialized molecule")
+
     if isinstance(inp_molecule, dict):
-        # This is a JSON molecule. Currently only the rdkit backend is working for this.
+        # This is a JSON molecule.
         molecule = mol_from_json(inp_molecule, backend=backend)
 
     elif backend == 'rdkit':
         if not has_rdkit:
             raise RuntimeError("You need to have RDKit installed to use the RDKit backend")
-        molecule = _load_mol_rd(inp_molecule)
+        molecule = Chem.MolFromSmiles(inp_molecule)
 
     elif backend == 'openeye':
         if not has_openeye:
             raise RuntimeError("You need to have OpenEye installed or an up-to-date license to use the openeye backend")
-        molecule = _load_mol_oe(inp_molecule)
+        molecule = oechem.OEMol()
+        oechem.OESmilesToMol(molecule, inp_molecule)
     else:
         raise RuntimeError("You must have either RDKit or OpenEye installed")
     return molecule
 
 
-def _load_mol_rd(inp_molecule):
+def _load_mol_oe(smiles):
 
-    _EXT_DISPATCH_TABLE = {'.pdb': Chem.MolFromPDBFile, '.mol2': Chem.MolFromMol2File, '.tpl': Chem.MolFromTPLFile}
-    if isinstance(inp_molecule, str):
-        # First check if it has a file extension
-        ext = _get_extension(inp_molecule)
-
-        if not ext:
-            # This is probably a SMILES
-            molecule = Chem.MolFromSmiles(inp_molecule)
-            if not molecule:
-                raise Warning("Could not parse molecule")
-            return molecule
-
-        # Try loading string as file
-        try:
-            molecule = _EXT_DISPATCH_TABLE[ext](inp_molecule)
-        except KeyError:
-            raise KeyError("Could not parse {}".format(ext))
-
-    if isinstance(inp_molecule, Chem.Mol):
-        molecule = copy.deepcopy(inp_molecule)
-    if has_openeye and not isinstance(inp_molecule, Chem.Mol):
-        # Check if OpenEye molecule
-        if isinstance(inp_molecule, ((oechem.OEMol, oechem.OEGraphMol, oechem.OEMolBase))):
-            warnings.warn("Cannot use RDKit backend with OpenEye molecule. Converting oemol to rdkit mol")
-            molecule = Chem.MolFromSmiles(oechem.OEMolToSmiles(inp_molecule))
-
-    return molecule
-
-
-def _load_mol_oe(inp_molecule):
+    if not oechem.OEChemIsLicensed():
+        raise(ImportError("Need License for OEChem!"))
 
     molecule = oechem.OEMol()
-    if isinstance(inp_molecule, str):
-        # First check if it has a file extension
-        ext = _get_extension(inp_molecule)
-
-        if not ext:
-            # This is probably a SMILES
-            oechem.OEParseSmiles(molecule, inp_molecule)
-            if not molecule:
-                raise Warning("Could not parse molecule")
-            return molecule
-
-        ifs = oechem.oemolistream()
-        if not ifs.open(inp_molecule):
-            raise Warning("OpenEye could not open File")
-        for mol in ifs.GetOEMols():
-            molecule = oechem.OEMol(mol)
-
-    if isinstance(inp_molecule, (oechem.OEMol, oechem.OEGraphMol, oechem.OEMolBase)):
-        molecule = copy.deepcopy(inp_molecule)
-    elif has_rdkit and isinstance(inp_molecule, Chem.Mol):
-        # convert to openeye molecule
-        warnings.warn("Cannot use openeye backend with rdkit molecule. Converting rdkit to oemol")
-        molecule = oechem.OEMol()
-        oechem.OESmilesToMol(molecule, Chem.MolToSmiles(inp_molecule))
+    if not oechem.OESmilesToMol(molecule, smiles):
+        raise ValueError("The supplied SMILES {} could not be parsed".format(smiles))
 
     return molecule
+# def _load_mol_rd(inp_molecule):
+#
+#     _EXT_DISPATCH_TABLE = {'.pdb': Chem.MolFromPDBFile, '.mol2': Chem.MolFromMol2File, '.tpl': Chem.MolFromTPLFile}
+#     if isinstance(inp_molecule, str):
+#         # First check if it has a file extension
+#         ext = _get_extension(inp_molecule)
+#
+#         if not ext:
+#             # This is probably a SMILES
+#             molecule = Chem.MolFromSmiles(inp_molecule)
+#             if not molecule:
+#                 raise Warning("Could not parse molecule")
+#             return molecule
+#
+#         # Try loading string as file
+#         try:
+#             molecule = _EXT_DISPATCH_TABLE[ext](inp_molecule)
+#         except KeyError:
+#             raise KeyError("Could not parse {}".format(ext))
+#
+#     if isinstance(inp_molecule, Chem.Mol):
+#         molecule = copy.deepcopy(inp_molecule)
+#     if has_openeye and not isinstance(inp_molecule, Chem.Mol):
+#         # Check if OpenEye molecule
+#         if isinstance(inp_molecule, ((oechem.OEMol, oechem.OEGraphMol, oechem.OEMolBase))):
+#             warnings.warn("Cannot use RDKit backend with OpenEye molecule. Converting oemol to rdkit mol")
+#             molecule = Chem.MolFromSmiles(oechem.OEMolToSmiles(inp_molecule))
+#
+#     return molecule
+
+
+# # def _load_mol_oe(inp_molecule):
+# #
+# #     molecule = oechem.OEMol()
+# #     if isinstance(inp_molecule, str):
+# #         # First check if it has a file extension
+# #         ext = _get_extension(inp_molecule)
+# #
+# #         if not ext:
+# #             # This is probably a SMILES
+# #             oechem.OEParseSmiles(molecule, inp_molecule)
+# #             if not molecule:
+# #                 raise Warning("Could not parse molecule")
+# #             return molecule
+# #
+# #         ifs = oechem.oemolistream()
+# #         if not ifs.open(inp_molecule):
+# #             raise Warning("OpenEye could not open File")
+# #         for mol in ifs.GetOEMols():
+# #             molecule = oechem.OEMol(mol)
+# #
+# #     if isinstance(inp_molecule, (oechem.OEMol, oechem.OEGraphMol, oechem.OEMolBase)):
+# #         molecule = copy.deepcopy(inp_molecule)
+# #     elif has_rdkit and isinstance(inp_molecule, Chem.Mol):
+# #         # convert to openeye molecule
+# #         warnings.warn("Cannot use openeye backend with rdkit molecule. Converting rdkit to oemol")
+# #         molecule = oechem.OEMol()
+# #         oechem.OESmilesToMol(molecule, Chem.MolToSmiles(inp_molecule))
+#
+#     return molecule
 
 
 def mol_from_json(inp_molecule, backend='openeye'):
@@ -383,4 +398,39 @@ def remove_map(molecule):
         else:
             raise TypeError("Only openeye and rdkit are supported backends")
 
+
+def check_stereochemistry(molecule):
+
+    if has_openeye:
+        if not oechem.OEChemIsLicensed():
+            raise ImportError("Must have oechem License!")
+    else:
+        raise ImportError("Must have openeey installed")
+
+    unspec_chiral = False
+    unspec_db = False
+    problematic_atoms = list()
+    problematic_bonds = list()
+    for atom in molecule.GetAtoms():
+        if atom.IsChiral():
+            if not atom.HasStereoSpecified():
+                unspec_chiral = True
+                problematic_atoms.append((atom.GetIdx(), oechem.OEGetAtomicSymbol(atom.GetAtomicNum())))
+    for bond in molecule.GetBonds():
+        if bond.IsChiral():
+            if not (bond.HasStereoSpecified()):
+                unspec_db = True
+                a1 = bond.GetBgn()
+                a2 = bond.GetEnd()
+                a1_idx = a1.GetIdx()
+                a2_idx = a2.GetIdx()
+                a1_s = oechem.OEGetAtomicSymbol(a1.GetAtomicNum())
+                a2_s = oechem.OEGetAtomicSymbol(a2.GetAtomicNum())
+                bond_order = bond.GetOrder()
+                problematic_bonds.append((a1_idx, a1_s, a2_idx, a2_s, bond_order))
+    if unspec_chiral or unspec_db:
+        raise ValueError("Stereochemistry is unspecified. Problematic atoms {}, problematic bonds {}".format(problematic_atoms,
+                                                                                                             problematic_bonds))
+    else:
+        return True
 

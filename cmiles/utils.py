@@ -32,61 +32,61 @@ BOHR_2_ANGSTROM = 0.529177210
 ANGSROM_2_BOHR = 1. / BOHR_2_ANGSTROM
 
 
-# def generate_conformers(molecule, max_confs=800, strict_stereo=True, ewindow=15.0, rms_threshold=1.0, strict_types=True,
-#                         copy=True, canon_order=True):
-#     """Generate conformations for the supplied molecule
-#     Parameters
-#     ----------
-#     molecule : OEMol
-#         Molecule for which to generate conformers
-#     max_confs : int, optional, default=800
-#         Max number of conformers to generate.  If None, use default OE Value.
-#     strict_stereo : bool, optional, default=True
-#         If False, permits smiles strings with unspecified stereochemistry.
-#     strict_types : bool, optional, default=True
-#         If True, requires that Omega have exact MMFF types for atoms in molecule; otherwise, allows the closest atom
-#         type of the same element to be used.
-#     Returns
-#     -------
-#     molcopy : OEMol
-#         A multi-conformer molecule with up to max_confs conformers.
-#     Notes
-#     -----
-#     Roughly follows
-#     http://docs.eyesopen.com/toolkits/cookbook/python/modeling/am1-bcc.html
-#     """
-#     try:
-#         from openeye import oechem, oeomega
-#     except ImportError:
-#         raise Warning("Could not import OpenEye. Need license for OpenEye!")
-#     if copy:
-#         molcopy = oechem.OEMol(molecule)
-#     else:
-#         molcopy = molecule
-#     omega = oeomega.OEOmega()
-#
-#     # These parameters were chosen to match http://docs.eyesopen.com/toolkits/cookbook/python/modeling/am1-bcc.html
-#     omega.SetMaxConfs(max_confs)
-#     omega.SetIncludeInput(True)
-#     omega.SetCanonOrder(canon_order)
-#
-#     omega.SetSampleHydrogens(True)  # Word to the wise: skipping this step can lead to significantly different charges!
-#     omega.SetEnergyWindow(ewindow)
-#     omega.SetRMSThreshold(rms_threshold)  # Word to the wise: skipping this step can lead to significantly different charges!
-#
-#     omega.SetStrictStereo(strict_stereo)
-#     omega.SetStrictAtomTypes(strict_types)
-#
-#     omega.SetIncludeInput(False)  # don't include input
-#     if max_confs is not None:
-#         omega.SetMaxConfs(max_confs)
-#
-#     status = omega(molcopy)  # generate conformation
-#     if not status:
-#         raise(RuntimeError("omega returned error code %d" % status))
-#
-#     return molcopy
-#
+def generate_conformers(molecule, max_confs=800, strict_stereo=True, ewindow=15.0, rms_threshold=1.0, strict_types=True,
+                        copy=True, canon_order=True):
+    """Generate conformations for the supplied molecule
+    Parameters
+    ----------
+    molecule : OEMol
+        Molecule for which to generate conformers
+    max_confs : int, optional, default=800
+        Max number of conformers to generate.  If None, use default OE Value.
+    strict_stereo : bool, optional, default=True
+        If False, permits smiles strings with unspecified stereochemistry.
+    strict_types : bool, optional, default=True
+        If True, requires that Omega have exact MMFF types for atoms in molecule; otherwise, allows the closest atom
+        type of the same element to be used.
+    Returns
+    -------
+    molcopy : OEMol
+        A multi-conformer molecule with up to max_confs conformers.
+    Notes
+    -----
+    Roughly follows
+    http://docs.eyesopen.com/toolkits/cookbook/python/modeling/am1-bcc.html
+    """
+    try:
+        from openeye import oechem, oeomega
+    except ImportError:
+        raise Warning("Could not import OpenEye. Need license for OpenEye!")
+    if copy:
+        molcopy = oechem.OEMol(molecule)
+    else:
+        molcopy = molecule
+    omega = oeomega.OEOmega()
+
+    # These parameters were chosen to match http://docs.eyesopen.com/toolkits/cookbook/python/modeling/am1-bcc.html
+    omega.SetMaxConfs(max_confs)
+    omega.SetIncludeInput(True)
+    omega.SetCanonOrder(canon_order)
+
+    omega.SetSampleHydrogens(True)  # Word to the wise: skipping this step can lead to significantly different charges!
+    omega.SetEnergyWindow(ewindow)
+    omega.SetRMSThreshold(rms_threshold)  # Word to the wise: skipping this step can lead to significantly different charges!
+
+    omega.SetStrictStereo(strict_stereo)
+    omega.SetStrictAtomTypes(strict_types)
+
+    omega.SetIncludeInput(False)  # don't include input
+    if max_confs is not None:
+        omega.SetMaxConfs(max_confs)
+
+    status = omega(molcopy)  # generate conformation
+    if not status:
+        raise(RuntimeError("omega returned error code %d" % status))
+
+    return molcopy
+
 
 def load_molecule(inp_molecule, backend='openeye'):
     """
@@ -412,13 +412,28 @@ def check_stereochemistry(molecule):
     problematic_atoms = list()
     problematic_bonds = list()
     for atom in molecule.GetAtoms():
-        if atom.IsChiral():
-            if not atom.HasStereoSpecified():
+        if atom.IsChiral() or atom.HasStereoSpecified(oechem.OEAtomStereo_Tetrahedral):
+            # Check if handness is specified
+            v = []
+            for nbr in atom.GetAtoms():
+                v.append(nbr)
+            stereo = atom.GetStereo(v, oechem.OEAtomStereo_Tetrahedral)
+            if stereo == oechem.OEAtomStereo_Undefined:
                 unspec_chiral = True
                 problematic_atoms.append((atom.GetIdx(), oechem.OEGetAtomicSymbol(atom.GetAtomicNum())))
     for bond in molecule.GetBonds():
-        if bond.IsChiral():
-            if not (bond.HasStereoSpecified()):
+        if bond.IsChiral() and bond.HasStereoSpecified(oechem.OEBondStereo_CisTrans):
+            v = []
+            for neigh in bond.GetBgn().GetAtoms():
+                if neigh != bond.GetEnd():
+                    v.append(neigh)
+                    break
+            for neigh in bond.GetEnd().GetAtoms():
+                if neigh != bond.GetBgn():
+                    v.append(neigh)
+                    break
+            stereo = bond.GetStereo(v, oechem.OEBondStereo_CisTrans)
+            if stereo == oechem.OEBondStereo_Undefined:
                 unspec_db = True
                 a1 = bond.GetBgn()
                 a2 = bond.GetEnd()

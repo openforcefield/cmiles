@@ -102,3 +102,34 @@ def test_mol_from_json_rd():
             assert coordinates[i][j] == pytest.approx(geometry[i][j], 0.0000001)
 
 
+def test_has_stereochemistry():
+    pass
+
+
+@using_openeye
+def test_canonical_order():
+    """Test canonical atom order"""
+    mol = oechem.OEMol()
+    oechem.OESmilesToMol(mol, 'HOOH')
+
+    # add map
+    for atom in mol.GetAtoms():
+        atom.SetMapIdx(atom.GetIdx() + 1)
+
+    assert oechem.OEMolToSmiles(mol) == '[H:1][O:2][O:3][H:4]'
+
+    mol_2 = cmiles.utils.canonical_order_atoms(mol, in_place=False)
+    for atom in mol.GetAtoms():
+        atom.SetMapIdx(atom.GetIdx() + 1)
+    for atom in mol_2.GetAtoms():
+        atom.SetMapIdx(atom.GetIdx() + 1)
+    assert oechem.OEMolToSmiles(mol) == '[H:1][O:2][O:3][H:4]'
+    assert oechem.OEMolToSmiles(mol_2) == '[H:3][O:1][O:2][H:4]'
+
+    cmiles.utils.canonical_order_atoms(mol, in_place=True)
+    for atom in mol.GetAtoms():
+        atom.SetMapIdx(atom.GetIdx() + 1)
+    assert oechem.OEMolToSmiles(mol) == '[H:3][O:1][O:2][H:4]'
+
+
+

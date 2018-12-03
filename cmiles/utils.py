@@ -412,7 +412,7 @@ def check_stereochemistry(molecule):
     problematic_atoms = list()
     problematic_bonds = list()
     for atom in molecule.GetAtoms():
-        if atom.IsChiral() or atom.HasStereoSpecified(oechem.OEAtomStereo_Tetrahedral):
+        if atom.IsChiral() and not atom.HasStereoSpecified(oechem.OEAtomStereo_Tetrahedral):
             # Check if handness is specified
             v = []
             for nbr in atom.GetAtoms():
@@ -422,17 +422,29 @@ def check_stereochemistry(molecule):
                 unspec_chiral = True
                 problematic_atoms.append((atom.GetIdx(), oechem.OEGetAtomicSymbol(atom.GetAtomicNum())))
     for bond in molecule.GetBonds():
-        if bond.IsChiral() and bond.HasStereoSpecified(oechem.OEBondStereo_CisTrans):
+        # if bond.IsChiral() and not bond.HasStereoSpecified():
+        #     for atomB in bond.GetBgn().GetAtoms():
+        #         if atomB == bond.GetEnd():
+        #             continue
+        #         for atomE in bond.GetEnd().GetAtoms():
+        #             if atomE == bond.GetBgn():
+        #                 continue
+        #             v = []
+        #             v.append(atomB)
+        #             v.append(atomE)
+        #             stereo = bond.GetStereo(v, oechem.OEBondStereo_CisTrans)
+        if bond.IsChiral() and not bond.HasStereoSpecified(oechem.OEBondStereo_CisTrans):
             v = []
             for neigh in bond.GetBgn().GetAtoms():
                 if neigh != bond.GetEnd():
                     v.append(neigh)
-                    break
+                    #break
             for neigh in bond.GetEnd().GetAtoms():
                 if neigh != bond.GetBgn():
                     v.append(neigh)
-                    break
+                    #break
             stereo = bond.GetStereo(v, oechem.OEBondStereo_CisTrans)
+
             if stereo == oechem.OEBondStereo_Undefined:
                 unspec_db = True
                 a1 = bond.GetBgn()
@@ -444,8 +456,39 @@ def check_stereochemistry(molecule):
                 bond_order = bond.GetOrder()
                 problematic_bonds.append((a1_idx, a1_s, a2_idx, a2_s, bond_order))
     if unspec_chiral or unspec_db:
+        print("Stereochemistry is unspecified. Problematic atoms {}, problematic bonds {}".format(problematic_atoms,
+                                                                                                             problematic_bonds))
         raise ValueError("Stereochemistry is unspecified. Problematic atoms {}, problematic bonds {}".format(problematic_atoms,
                                                                                                              problematic_bonds))
     else:
         return True
 
+
+def canonical_order_atoms(molecule, in_place=True):
+
+    if not in_place:
+        molecule = copy.deepcopy(molecule)
+
+    oechem.OECanonicalOrderAtoms(molecule)
+    oechem.OECanonicalOrderBonds(molecule)
+
+    vatm = []
+    for atom in molecule.GetAtoms():
+        if atom.GetAtomicNum() != oechem.OEElemNo_H:
+            vatm.append(atom)
+    molecule.OrderAtoms(vatm)
+
+    vbnd = []
+    for bond in molecule.GetBonds():
+        if bond.GetBgn().GetAtomicNum() != oechem.OEElemNo_H and bond.GetEnd().GetAtomicNum() != oechem.OEElemNo_H:
+            vbnd.append(bond)
+    molecule.OrderBonds(vbnd)
+
+    molecule.Sweep()
+
+    for bond in molecule.GetBonds():
+        if bond.GetBgnIdx() > bond.GetEndIdx():
+            bond.SwapEnds()
+
+    if not in_place:
+        return molecule

@@ -32,60 +32,60 @@ BOHR_2_ANGSTROM = 0.529177210
 ANGSROM_2_BOHR = 1. / BOHR_2_ANGSTROM
 
 
-def generate_conformers(molecule, max_confs=800, strict_stereo=True, ewindow=15.0, rms_threshold=1.0, strict_types=True,
-                        copy=True, canon_order=True):
-    """Generate conformations for the supplied molecule
-    Parameters
-    ----------
-    molecule : OEMol
-        Molecule for which to generate conformers
-    max_confs : int, optional, default=800
-        Max number of conformers to generate.  If None, use default OE Value.
-    strict_stereo : bool, optional, default=True
-        If False, permits smiles strings with unspecified stereochemistry.
-    strict_types : bool, optional, default=True
-        If True, requires that Omega have exact MMFF types for atoms in molecule; otherwise, allows the closest atom
-        type of the same element to be used.
-    Returns
-    -------
-    molcopy : OEMol
-        A multi-conformer molecule with up to max_confs conformers.
-    Notes
-    -----
-    Roughly follows
-    http://docs.eyesopen.com/toolkits/cookbook/python/modeling/am1-bcc.html
-    """
-    try:
-        from openeye import oechem, oeomega
-    except ImportError:
-        raise Warning("Could not import OpenEye. Need license for OpenEye!")
-    if copy:
-        molcopy = oechem.OEMol(molecule)
-    else:
-        molcopy = molecule
-    omega = oeomega.OEOmega()
-
-    # These parameters were chosen to match http://docs.eyesopen.com/toolkits/cookbook/python/modeling/am1-bcc.html
-    omega.SetMaxConfs(max_confs)
-    omega.SetIncludeInput(True)
-    omega.SetCanonOrder(canon_order)
-
-    omega.SetSampleHydrogens(True)  # Word to the wise: skipping this step can lead to significantly different charges!
-    omega.SetEnergyWindow(ewindow)
-    omega.SetRMSThreshold(rms_threshold)  # Word to the wise: skipping this step can lead to significantly different charges!
-
-    omega.SetStrictStereo(strict_stereo)
-    omega.SetStrictAtomTypes(strict_types)
-
-    omega.SetIncludeInput(False)  # don't include input
-    if max_confs is not None:
-        omega.SetMaxConfs(max_confs)
-
-    status = omega(molcopy)  # generate conformation
-    if not status:
-        raise(RuntimeError("omega returned error code %d" % status))
-
-    return molcopy
+# def generate_conformers(molecule, max_confs=800, strict_stereo=True, ewindow=15.0, rms_threshold=1.0, strict_types=True,
+#                         copy=True, canon_order=True):
+#     """Generate conformations for the supplied molecule
+#     Parameters
+#     ----------
+#     molecule : OEMol
+#         Molecule for which to generate conformers
+#     max_confs : int, optional, default=800
+#         Max number of conformers to generate.  If None, use default OE Value.
+#     strict_stereo : bool, optional, default=True
+#         If False, permits smiles strings with unspecified stereochemistry.
+#     strict_types : bool, optional, default=True
+#         If True, requires that Omega have exact MMFF types for atoms in molecule; otherwise, allows the closest atom
+#         type of the same element to be used.
+#     Returns
+#     -------
+#     molcopy : OEMol
+#         A multi-conformer molecule with up to max_confs conformers.
+#     Notes
+#     -----
+#     Roughly follows
+#     http://docs.eyesopen.com/toolkits/cookbook/python/modeling/am1-bcc.html
+#     """
+#     try:
+#         from openeye import oechem, oeomega
+#     except ImportError:
+#         raise Warning("Could not import OpenEye. Need license for OpenEye!")
+#     if copy:
+#         molcopy = oechem.OEMol(molecule)
+#     else:
+#         molcopy = molecule
+#     omega = oeomega.OEOmega()
+#
+#     # These parameters were chosen to match http://docs.eyesopen.com/toolkits/cookbook/python/modeling/am1-bcc.html
+#     omega.SetMaxConfs(max_confs)
+#     omega.SetIncludeInput(True)
+#     omega.SetCanonOrder(canon_order)
+#
+#     omega.SetSampleHydrogens(True)  # Word to the wise: skipping this step can lead to significantly different charges!
+#     omega.SetEnergyWindow(ewindow)
+#     omega.SetRMSThreshold(rms_threshold)  # Word to the wise: skipping this step can lead to significantly different charges!
+#
+#     omega.SetStrictStereo(strict_stereo)
+#     omega.SetStrictAtomTypes(strict_types)
+#
+#     omega.SetIncludeInput(False)  # don't include input
+#     if max_confs is not None:
+#         omega.SetMaxConfs(max_confs)
+#
+#     status = omega(molcopy)  # generate conformation
+#     if not status:
+#         raise(RuntimeError("omega returned error code %d" % status))
+#
+#     return molcopy
 
 
 def load_molecule(inp_molecule, backend='openeye'):
@@ -464,7 +464,7 @@ def check_stereochemistry(molecule):
         return True
 
 
-def canonical_order_atoms(molecule, in_place=True):
+def canonical_order_atoms_oe(molecule, in_place=True):
 
     if not in_place:
         molecule = copy.deepcopy(molecule)
@@ -492,3 +492,48 @@ def canonical_order_atoms(molecule, in_place=True):
 
     if not in_place:
         return molecule
+
+
+def canonical_order_atoms_rd(molecule, h_last=True):
+    """
+    Canonical order atoms in RDKit molecule. Eaach atom in the molecule is given a map index that corresponds to the RDkit
+    rank for that atom (+1). RDKit atom ranking ranks hydrogens first and then the heavy atoms. When
+    h_last is set to True, the map indices are reordered to put hydrogens after the heavy atoms.
+    Parameters
+    ----------
+    molecule: rdkit mol
+    h_last: bool, optional, default is True
+
+    Returns
+    -------
+    molecule: rdkit molecule with map indices that correspond to the atom canonical rank
+    """
+
+    # Check if molecule already has map. If it does, remove map because Che.CanonicalRankAtoms uses map indices in ranking
+    if is_mapped(molecule):
+        remove_map(molecule)
+
+    # Add explicit hydrogen
+    molecule = Chem.AddHs(molecule)
+    heavy_atoms = 0
+    hydrogens = 0
+    ranks = list(Chem.CanonicalRankAtoms(molecule, breakTies=True))
+    for i, j in enumerate(ranks):
+        atom = molecule.GetAtomWithIdx(i)
+        atom.SetAtomMapNum(j+1)
+        if atom.GetAtomicNum() != 1:
+            # heavy atom
+            heavy_atoms +=1
+        else:
+            # hydrogen
+            hydrogens +=1
+
+    if h_last:
+        # reorder map to put hydrogen last
+        for atom in molecule.GetAtoms():
+            map_idx = atom.GetAtomMapNum()
+            if atom.GetAtomicNum() !=1:
+                atom.SetAtomMapNum(map_idx - hydrogens)
+            else:
+                atom.SetAtomMapNum(map_idx + heavy_atoms)
+    return molecule

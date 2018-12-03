@@ -132,4 +132,21 @@ def test_canonical_order():
     assert oechem.OEMolToSmiles(mol) == '[H:3][O:1][O:2][H:4]'
 
 
+@using_rdkit
+def test_canonical_order_rd():
+    """Test canonical atom order"""
+    mol = Chem.MolFromSmiles('CO')
+
+    # add map
+    mol = Chem.AddHs(mol)
+    for i in range(mol.GetNumAtoms()):
+        mol.GetAtomWithIdx(i).SetAtomMapNum(i+1)
+
+    assert Chem.MolToSmiles(mol) == '[C:1]([O:2][H:6])([H:3])([H:4])[H:5]'
+
+    mol_2 = cmiles.utils.canonical_order_atoms_rd(mol, h_last=False)
+    assert Chem.MolToSmiles(mol_2) == '[H:1][O:5][C:6]([H:2])([H:3])[H:4]'
+
+    mol_3 = cmiles.utils.canonical_order_atoms_rd(mol)
+    assert Chem.MolToSmiles(mol_3) == '[O:1]([C:2]([H:4])([H:5])[H:6])[H:3]'
 

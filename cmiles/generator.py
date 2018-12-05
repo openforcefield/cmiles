@@ -80,52 +80,58 @@ def to_molecule_id(molecule, canonicalization='openeye'):
     """
     # check input and convert to oe or rdkit mol
     molecule = cmiles.utils.load_molecule(molecule, backend=canonicalization)
-    molecule_copy = deepcopy(molecule)
+
     # check for map. If map exists, remove. We only want maps generated with cmiles
-    if cmiles.utils.is_mapped(molecule_copy):
-        cmiles.utils.remove_map(molecule_copy)
+    if cmiles.utils.is_mapped(molecule):
+        cmiles.utils.remove_map(molecule)
+    # check for explicit hydrogen
+    if not cmiles.utils.has_explicit_hydrogen(molecule):
+        raise ValueError("Input molecule is missing explicit hydrogen")
+
+    # check for fully defined stereochemistry
+
 
     smiles = {}
     if canonicalization == 'openeye':
         if not HAS_OPENEYE:
             raise RuntimeError("You do not have OpenEye installed or you are missing the license.")
-        smiles['canonical_smiles'] = to_canonical_smiles_oe(molecule_copy, isomeric=False, explicit_hydrogen=False,
+        smiles['canonical_smiles'] = to_canonical_smiles_oe(molecule, isomeric=False, explicit_hydrogen=False,
                                                              mapped=False)
-        smiles['canonical_isomeric_smiles'] = to_canonical_smiles_oe(molecule_copy, isomeric=True, explicit_hydrogen=False,
+        smiles['canonical_isomeric_smiles'] = to_canonical_smiles_oe(molecule, isomeric=True, explicit_hydrogen=False,
                                                                       mapped=False)
-        smiles['canonical_isomeric_explicit_hydrogen_smiles'] = to_canonical_smiles_oe(molecule_copy, isomeric=True,
+        smiles['canonical_isomeric_explicit_hydrogen_smiles'] = to_canonical_smiles_oe(molecule, isomeric=True,
                                                                                        explicit_hydrogen=True,
                                                                                         mapped=False)
-        smiles['canonical_explicit_hydrogen_smiles'] = to_canonical_smiles_oe(molecule_copy, isomeric=False,
+        smiles['canonical_explicit_hydrogen_smiles'] = to_canonical_smiles_oe(molecule, isomeric=False,
                                                                                explicit_hydrogen=True, mapped=False)
-        smiles['canonical_isomeric_explicit_hydrogen_mapped_smiles'] = to_canonical_smiles_oe(molecule_copy, isomeric=True,
+        smiles['canonical_isomeric_explicit_hydrogen_mapped_smiles'] = to_canonical_smiles_oe(molecule, isomeric=True,
                                                                                                explicit_hydrogen=True,
                                                                                                mapped=True)
-        smiles['unique_protomer_representation'] = get_unique_protomer(molecule_copy)
+        smiles['unique_protomer_representation'] = get_unique_protomer(molecule)
         smiles['provenance'] = 'cmiles_' + cmiles.__version__ + '_openeye_' + oe.__version__
     elif canonicalization == 'rdkit':
         if not HAS_RDKIT:
            raise RuntimeError("You do not have RDKit installed")
-        smiles['canonical_smiles'] = to_canonical_smiles_rd(molecule_copy, isomeric=False, explicit_hydrogen=False,
+        smiles['canonical_smiles'] = to_canonical_smiles_rd(molecule, isomeric=False, explicit_hydrogen=False,
                                                              mapped=False)
-        smiles['canonical_isomeric_smiles'] = to_canonical_smiles_rd(molecule_copy, isomeric=True, explicit_hydrogen=False,
+        smiles['canonical_isomeric_smiles'] = to_canonical_smiles_rd(molecule, isomeric=True, explicit_hydrogen=False,
                                                                       mapped=False)
-        smiles['canonical_isomeric_explicit_hydrogen_smiles'] = to_canonical_smiles_rd(molecule_copy, isomeric=True,
+        smiles['canonical_isomeric_explicit_hydrogen_smiles'] = to_canonical_smiles_rd(molecule, isomeric=True,
                                                                                         explicit_hydrogen=True,
                                                                                         mapped=False)
         smiles['canonical_explicit_hydrogen_smiles'] = to_canonical_smiles_rd(molecule_copy, isomeric=False,
                                                                                explicit_hydrogen=True, mapped=False)
-        smiles['canonical_isomeric_explicit_hydrogen_mapped_smiles'] = to_canonical_smiles_rd(molecule_copy, isomeric=True,
+        smiles['canonical_isomeric_explicit_hydrogen_mapped_smiles'] = to_canonical_smiles_rd(molecule, isomeric=True,
                                                                                                explicit_hydrogen=True,
                                                                                                mapped=True)
         if HAS_OPENEYE:
-            smiles['unique_protomer_representation'] = get_unique_protomer(molecule_copy)
+            smiles['unique_protomer_representation'] = get_unique_protomer(molecule)
         smiles['provenance'] = 'cmiles_' + cmiles.__version__ + '_rdkit_' + rd.__version__
     else:
         raise TypeError("canonicalization must be either 'openeye' or 'rdkit'")
 
-    smiles['standard_inchi'], smiles['inchi_key'] = to_inchi_and_key(molecule_copy)
-    smiles['molecular_formula'] = molecular_formula(molecule_copy)
+    smiles['standard_inchi'], smiles['inchi_key'] = to_inchi_and_key(molecule)
+    smiles['molecular_formula'] = molecular_formula(molecule)
 
     return smiles
 
@@ -168,13 +174,13 @@ def to_canonical_smiles_rd(molecule, isomeric, explicit_hydrogen, mapped):
 
     molecule = deepcopy(molecule)
     # Check molecule instance
-    if not isinstance(molecule, rd.Chem.rdchem.Mol):
+    if not isinstance(molecule, (rd.Chem.rdchem.Mol, rd.Chem.Mol)):
         warnings.warn("molecule should be rdkit molecule. Converting to rdkit molecule", UserWarning)
         # Check if OpenEye Mol and convert to RDKit molecule
         if HAS_OPENEYE:
             if not oe.OEChemIsLicensed():
                 raise ImportError("Need license for oechem!")
-            if isinstance(molecule, oe.oechem.OEMol()):
+            if isinstance(molecule, oe.oechem.OEMol):
                 # Convert OpenEye Mol to RDKit molecule
                 molecule = rd.Chem.MolFromSmiles(oe.oechem.OEMolToSmiles(molecule))
             if molecule is None:
@@ -185,7 +191,6 @@ def to_canonical_smiles_rd(molecule, isomeric, explicit_hydrogen, mapped):
     if explicit_hydrogen:
         # Add explicit hydrogens
         molecule = rd.Chem.AddHs(molecule)
-        # canonical order
     if not explicit_hydrogen:
         molecule = rd.Chem.RemoveHs(molecule)
 
@@ -194,22 +199,8 @@ def to_canonical_smiles_rd(molecule, isomeric, explicit_hydrogen, mapped):
     except KeyError:
         json_geometry = False
 
-    if isomeric and not json_geometry:
-        # This molecule was generated from a SMILES string. Check if stereochemistry was provided
-        chiral_centers = rd.Chem.FindMolChiralCenters(molecule, includeUnassigned=True)
-        for center in chiral_centers:
-            atom_id = center[0]
-            if center[-1] == '?':
-                raise RuntimeError("SMILES must contain isomeric information. chiral center {} is missing steochemistry "
-                                   "information".format(molecule.GetAtomWithIdx(atom_id).GetSmarts()))
-
-        # Find potential stereo bonds and set to E-isomer if unspecified
-        rd.Chem.FindPotentialStereoBonds(molecule)
-        for bond in molecule.GetBonds():
-            if bond.GetStereo() == rd.Chem.BondStereo.STEREOANY:
-                raise RuntimeError("SMILES must contain isomeric information. steroe bond {}{}{} is missing steochemistry "
-                                   "information".format(bond.GetBeginAtom().GetSmarts(), bond.GetSmarts(),
-                                                        bond.GetEndAtom().GetSmarts()))
+    if isomeric and not cmiles.utils.is_stereo_defined(molecule):
+        raise ValueError("Some stereochemistry is not defined")
 
     # Get canonical order for map
     if mapped:
@@ -218,10 +209,7 @@ def to_canonical_smiles_rd(molecule, isomeric, explicit_hydrogen, mapped):
             for i in range(molecule.GetNumAtoms()):
                 molecule.GetAtomWithIdx(i).SetAtomMapNum(i+1)
         else:
-            # canonical order for map
-            ranks = list(rd.Chem.CanonicalRankAtoms(molecule, breakTies=True))
-            for i, j in enumerate(ranks):
-                molecule.GetAtomWithIdx(i).SetAtomMapNum(j+1)
+            molecule = cmiles.utils.canonical_order_atoms_rd(molecule)
 
     smiles = rd.Chem.MolToSmiles(molecule, allHsExplicit=explicit_hydrogen, isomericSmiles=isomeric, canonical=True)
     return smiles
@@ -253,6 +241,7 @@ def to_canonical_smiles_oe(molecule, isomeric, explicit_hydrogen, mapped):
     smiles str
 
     """
+    molecule = deepcopy(molecule)
     if not HAS_OPENEYE:
         raise ImportError("OpenEye is not installed. You can use the canonicalization='rdkit' to use the RDKit backend"
                            "The Conda recipe for cmiles installs rdkit")
@@ -280,18 +269,6 @@ def to_canonical_smiles_oe(molecule, isomeric, explicit_hydrogen, mapped):
     except ValueError:
         JSON_geometry = False
 
-    # if not JSON_geometry:
-    #     # The supplied input was a SMILES string.
-    #     # geometry that comes from JSON molecule we don't want to change because the mapping needs to match that order
-    #     # For geometries that come from files, we want to reorder those to canonical order but need to make sure we
-    #     # don't lose stereochemistry information.
-    #     #ToDo make sure generating new conformation with canonical order for a molecule that already has coordinates does not mess up existing stereochemistry
-    #     try:
-    #         molecule = cmiles.utils.generate_conformers(molecule, max_confs=1, strict_stereo=False, strict_types=False)
-    #     except RuntimeError:
-    #         warnings.warn("Omega failed to generate a conformer. Smiles may be missing stereochemistry and the map index will"
-    #                       "not be in canonical order.")
-
     if isomeric:
         oechem.OEPerceiveChiral(molecule)
         oechem.OE3DToAtomStereo(molecule)
@@ -313,8 +290,8 @@ def to_canonical_smiles_oe(molecule, isomeric, explicit_hydrogen, mapped):
 
     # Add tags to molecule
     if not JSON_geometry:
+        cmiles.utils.canonical_order_atoms(molecule)
         # canonical order of atoms if input was SMILES. For JSON serialized molecule, keep the original order.
-        oechem.OECanonicalOrderAtoms(molecule)
     for atom in molecule.GetAtoms():
         atom.SetMapIdx(atom.GetIdx() + 1)
 
@@ -323,10 +300,6 @@ def to_canonical_smiles_oe(molecule, isomeric, explicit_hydrogen, mapped):
 
     if mapped and not isomeric:
         raise Warning("Tagged SMILES must include stereochemistry ")
-
-    # add tag to data
-    tag = oechem.OEGetTag("has_map")
-    molecule.SetData(tag, bool(True))
 
     return oechem.OEMolToSmiles(molecule)
 
@@ -393,6 +366,7 @@ def molecular_formula(molecule):
 
 def get_unique_protomer(molecule):
 
+    molecule = deepcopy(molecule)
     # This only works for OpenEye
     # Todo There might be a way to use different layers of InChI for this purpose.
     # Not all tautomers are recognized as the same by InChI so it won't capture all tautomers.
@@ -412,6 +386,7 @@ def get_unique_protomer(molecule):
         smiles = rd.Chem.MolToSmiles(molecule)
         molecule = oechem.OEMol()
         oechem.OESmilesToMol(molecule, smiles)
+
     molecule_copy = deepcopy(molecule)
     oequacpac.OEGetUniqueProtomer(molecule_copy, molecule)
     return oechem.OEMolToSmiles(molecule_copy)

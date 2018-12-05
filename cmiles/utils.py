@@ -1,9 +1,7 @@
 """
 Utility functions for cmiles generator
 """
-import os
 import copy
-import warnings
 import numpy as np
 
 try:
@@ -26,66 +24,10 @@ _symbols = {'H':1,'He':2,
             'Rb':37,'Sr':38,'Y':39,'Zr':40,'Nb':41,'Mo':42,'Tc':43,'Ru':44,'Rh':45,'Pd':46,'Ag':47,'Cd':48,'In':49,'Sn':50,'Sb':51,'Te':52,'I':53,'Xe':54,
             'Cs':55,'Ba':56,'La':57,'Ce':58,'Pr':59,'Nd':60,'Pm':61,'Sm':62,'Eu':63,'Gd':64,'Tb':65,'Dy':66,'Ho':67,'Er':68,'Tm':69,'Yb':70,
             'Lu':71,'Hf':72,'Ta':73,'W':74,'Re':75,'Os':76,'Ir':77,'Pt':78,'Au':79,'Hg':80,'Tl':81,'Pb':82,'Bi':83,'Po':84,'At':85,'Rn':86,
-            'Fr':87,'Ra':88,'Ac':89,'Th':90,'Pa':91,'U':92,'Np':93,'Pu':94,'Am':95,'Cm':96,'Bk':97,'Cf':98,'Es':99,'Fm':100,'Md':101,'No':102,'Lr':103,'Rf':104,'Db':105,'Sg':106,'Bh':107,'Hs':108,'Mt':109}
-
+            'Fr':87,'Ra':88,'Ac':89,'Th':90,'Pa':91,'U':92,'Np':93,'Pu':94,'Am':95,'Cm':96,'Bk':97,'Cf':98,'Es':99,'Fm':100,'Md':101,'No':102,'Lr':103,
+            'Rf':104,'Db':105,'Sg':106,'Bh':107,'Hs':108,'Mt':109}
 BOHR_2_ANGSTROM = 0.529177210
 ANGSROM_2_BOHR = 1. / BOHR_2_ANGSTROM
-
-
-# def generate_conformers(molecule, max_confs=800, strict_stereo=True, ewindow=15.0, rms_threshold=1.0, strict_types=True,
-#                         copy=True, canon_order=True):
-#     """Generate conformations for the supplied molecule
-#     Parameters
-#     ----------
-#     molecule : OEMol
-#         Molecule for which to generate conformers
-#     max_confs : int, optional, default=800
-#         Max number of conformers to generate.  If None, use default OE Value.
-#     strict_stereo : bool, optional, default=True
-#         If False, permits smiles strings with unspecified stereochemistry.
-#     strict_types : bool, optional, default=True
-#         If True, requires that Omega have exact MMFF types for atoms in molecule; otherwise, allows the closest atom
-#         type of the same element to be used.
-#     Returns
-#     -------
-#     molcopy : OEMol
-#         A multi-conformer molecule with up to max_confs conformers.
-#     Notes
-#     -----
-#     Roughly follows
-#     http://docs.eyesopen.com/toolkits/cookbook/python/modeling/am1-bcc.html
-#     """
-#     try:
-#         from openeye import oechem, oeomega
-#     except ImportError:
-#         raise Warning("Could not import OpenEye. Need license for OpenEye!")
-#     if copy:
-#         molcopy = oechem.OEMol(molecule)
-#     else:
-#         molcopy = molecule
-#     omega = oeomega.OEOmega()
-#
-#     # These parameters were chosen to match http://docs.eyesopen.com/toolkits/cookbook/python/modeling/am1-bcc.html
-#     omega.SetMaxConfs(max_confs)
-#     omega.SetIncludeInput(True)
-#     omega.SetCanonOrder(canon_order)
-#
-#     omega.SetSampleHydrogens(True)  # Word to the wise: skipping this step can lead to significantly different charges!
-#     omega.SetEnergyWindow(ewindow)
-#     omega.SetRMSThreshold(rms_threshold)  # Word to the wise: skipping this step can lead to significantly different charges!
-#
-#     omega.SetStrictStereo(strict_stereo)
-#     omega.SetStrictAtomTypes(strict_types)
-#
-#     omega.SetIncludeInput(False)  # don't include input
-#     if max_confs is not None:
-#         omega.SetMaxConfs(max_confs)
-#
-#     status = omega(molcopy)  # generate conformation
-#     if not status:
-#         raise(RuntimeError("omega returned error code %d" % status))
-#
-#     return molcopy
 
 
 def load_molecule(inp_molecule, backend='openeye'):
@@ -105,98 +47,34 @@ def load_molecule(inp_molecule, backend='openeye'):
         be parsed with RDKit.
     """
     # Check input
-    if not isinstance(inp_molecule, (str, dict)):
-        raise TypeError("Input must be either a SMILES string or a JSON serialized molecule")
-
     if isinstance(inp_molecule, dict):
         # This is a JSON molecule.
         molecule = mol_from_json(inp_molecule, backend=backend)
 
-    elif backend == 'rdkit':
-        if not has_rdkit:
-            raise RuntimeError("You need to have RDKit installed to use the RDKit backend")
-        molecule = Chem.MolFromSmiles(inp_molecule)
+    elif isinstance(inp_molecule, str):
+        # Check for explicit H. This is not an exhaustive check but will catch many cases
+        if inp_molecule.find('H') == -1:
+            raise ValueError("{} is does not have explicit hydrogen".format(inp_molecule))
 
-    elif backend == 'openeye':
-        if not has_openeye:
-            raise RuntimeError("You need to have OpenEye installed or an up-to-date license to use the openeye backend")
-        molecule = oechem.OEMol()
-        oechem.OESmilesToMol(molecule, inp_molecule)
+        if backend == 'rdkit':
+            if not has_rdkit:
+                raise RuntimeError("You need to have RDKit installed to use the RDKit backend")
+            molecule = Chem.MolFromSmiles(inp_molecule)
+            if not molecule:
+                raise ValueError("The supplied SMILES {} could not be parsed".format(inp_molecule))
+
+        elif backend == 'openeye':
+            if not has_openeye:
+                raise RuntimeError("You need to have OpenEye installed or an up-to-date license to use the openeye backend")
+            molecule = oechem.OEMol()
+            if not oechem.OESmilesToMol(molecule, inp_molecule):
+                raise ValueError("The supplied SMILES {} could not be parsed".format(inp_molecule))
+        else:
+            raise RuntimeError("You must have either RDKit or OpenEye installed")
     else:
-        raise RuntimeError("You must have either RDKit or OpenEye installed")
-    return molecule
-
-
-def _load_mol_oe(smiles):
-
-    if not oechem.OEChemIsLicensed():
-        raise(ImportError("Need License for OEChem!"))
-
-    molecule = oechem.OEMol()
-    if not oechem.OESmilesToMol(molecule, smiles):
-        raise ValueError("The supplied SMILES {} could not be parsed".format(smiles))
+        raise TypeError("Input must be either a SMILES string or a JSON serialized molecule")
 
     return molecule
-# def _load_mol_rd(inp_molecule):
-#
-#     _EXT_DISPATCH_TABLE = {'.pdb': Chem.MolFromPDBFile, '.mol2': Chem.MolFromMol2File, '.tpl': Chem.MolFromTPLFile}
-#     if isinstance(inp_molecule, str):
-#         # First check if it has a file extension
-#         ext = _get_extension(inp_molecule)
-#
-#         if not ext:
-#             # This is probably a SMILES
-#             molecule = Chem.MolFromSmiles(inp_molecule)
-#             if not molecule:
-#                 raise Warning("Could not parse molecule")
-#             return molecule
-#
-#         # Try loading string as file
-#         try:
-#             molecule = _EXT_DISPATCH_TABLE[ext](inp_molecule)
-#         except KeyError:
-#             raise KeyError("Could not parse {}".format(ext))
-#
-#     if isinstance(inp_molecule, Chem.Mol):
-#         molecule = copy.deepcopy(inp_molecule)
-#     if has_openeye and not isinstance(inp_molecule, Chem.Mol):
-#         # Check if OpenEye molecule
-#         if isinstance(inp_molecule, ((oechem.OEMol, oechem.OEGraphMol, oechem.OEMolBase))):
-#             warnings.warn("Cannot use RDKit backend with OpenEye molecule. Converting oemol to rdkit mol")
-#             molecule = Chem.MolFromSmiles(oechem.OEMolToSmiles(inp_molecule))
-#
-#     return molecule
-
-
-# # def _load_mol_oe(inp_molecule):
-# #
-# #     molecule = oechem.OEMol()
-# #     if isinstance(inp_molecule, str):
-# #         # First check if it has a file extension
-# #         ext = _get_extension(inp_molecule)
-# #
-# #         if not ext:
-# #             # This is probably a SMILES
-# #             oechem.OEParseSmiles(molecule, inp_molecule)
-# #             if not molecule:
-# #                 raise Warning("Could not parse molecule")
-# #             return molecule
-# #
-# #         ifs = oechem.oemolistream()
-# #         if not ifs.open(inp_molecule):
-# #             raise Warning("OpenEye could not open File")
-# #         for mol in ifs.GetOEMols():
-# #             molecule = oechem.OEMol(mol)
-# #
-# #     if isinstance(inp_molecule, (oechem.OEMol, oechem.OEGraphMol, oechem.OEMolBase)):
-# #         molecule = copy.deepcopy(inp_molecule)
-# #     elif has_rdkit and isinstance(inp_molecule, Chem.Mol):
-# #         # convert to openeye molecule
-# #         warnings.warn("Cannot use openeye backend with rdkit molecule. Converting rdkit to oemol")
-# #         molecule = oechem.OEMol()
-# #         oechem.OESmilesToMol(molecule, Chem.MolToSmiles(inp_molecule))
-#
-#     return molecule
 
 
 def mol_from_json(inp_molecule, backend='openeye'):
@@ -222,17 +100,26 @@ def mol_from_json(inp_molecule, backend='openeye'):
     for key in required_fields:
         if key not in inp_molecule:
             raise KeyError("input molecule must have {}".format(key))
+
+    symbols = inp_molecule['symbols']
+    connectivity = inp_molecule['connectivity']
+
+    # convert to Angstrom.
+    geometry = np.asarray(inp_molecule['geometry'], dtype=float)*BOHR_2_ANGSTROM
+    if len(symbols) != geometry.shape[0]/3:
+        raise ValueError("Number of atoms in molecule does not match length of position array")
+
     if backend == 'openeye':
-        molecule = _mol_from_json_oe(inp_molecule)
+        molecule = _mol_from_json_oe(symbols, connectivity, geometry)
     elif backend == 'rdkit':
-        molecule = _mol_from_json_rd(inp_molecule)
+        molecule = _mol_from_json_rd(symbols, connectivity, geometry)
     else:
         raise ValueError("Only openeye and rdkit backends are supported")
 
     return molecule
 
 
-def _mol_from_json_oe(inp_molecule):
+def _mol_from_json_oe(symbols, connectivity, geometry):
     """
     Generate OEMol from QCSchema molecule specs
     Parameters
@@ -253,11 +140,6 @@ def _mol_from_json_oe(inp_molecule):
         raise RuntimeError("You do not have OpenEye installed or do not have license to use it. Use the RDKit backend")
 
     molecule = oechem.OEMol()
-    symbols = inp_molecule['symbols']
-    connectivity = inp_molecule['connectivity']
-    # Convert to Angstroms
-    geometry = np.asarray(inp_molecule['geometry'])*BOHR_2_ANGSTROM
-
     for s in symbols:
         molecule.NewAtom(_symbols[s])
 
@@ -287,7 +169,7 @@ def _mol_from_json_oe(inp_molecule):
     return molecule
 
 
-def _mol_from_json_rd(inp_molecule):
+def _mol_from_json_rd(symbols, connectivity, geometry):
     """
     Generate RDkit.Chem.Mol from QCSchema molecule specs.
     Parameters
@@ -307,9 +189,7 @@ def _mol_from_json_rd(inp_molecule):
 
     _BO_DISPATCH_TABLE = {1: Chem.BondType.SINGLE, 2: Chem.BondType.DOUBLE, 3: Chem.BondType.TRIPLE}
 
-    symbols = inp_molecule['symbols']
-    connectivity = inp_molecule['connectivity']
-    geometry = np.array(inp_molecule['geometry'], dtype=float).reshape(int(len(inp_molecule['geometry'])/3), 3)*BOHR_2_ANGSTROM
+    geometry = geometry.reshape(int(len(geometry)/3), 3)
     conformer = Chem.Conformer(len(symbols))
     has_geometry = True
 
@@ -342,13 +222,12 @@ def _mol_from_json_rd(inp_molecule):
 
     return molecule
 
-
-def _get_extension(filename):
-    (base, extension) = os.path.splitext(filename)
-    if extension == '.gz':
-        extension2 = os.path.splitext(base)[1]
-        return extension2 + extension
-    return extension
+# ToDo: ordered geometry by map indices.
+# Inputs can be:
+#  1. qcschema and map smile
+#  2. oe or rd mol with geometry.
+#     a. mol can have map on the indices
+#     b. If mol does not have map, must supply mapped SMILES
 
 
 def is_mapped(molecule):
@@ -359,6 +238,7 @@ def is_mapped(molecule):
     if has_openeye:
         if isinstance(molecule, (oechem.OEMol, oechem.OEGraphMol, oechem.OEMolBase)):
             backend = 'openeye'
+
     IS_MAPPED = True
     for atom in molecule.GetAtoms():
         if backend == 'openeye':
@@ -374,11 +254,11 @@ def is_mapped(molecule):
 
 def remove_map(molecule):
     """
-
+    Remove atom map from molecule.
+    This is done for several reasons such as the
     Parameters
     ----------
     molecule
-    backend
 
     Returns
     -------
@@ -399,13 +279,52 @@ def remove_map(molecule):
             raise TypeError("Only openeye and rdkit are supported backends")
 
 
-def check_stereochemistry(molecule):
+def is_stereo_defined(molecule, backend='openeye'):
+    """
+
+    Parameters
+    ----------
+    molecule
+    backend
+
+    Returns
+    -------
+
+    """
+    if backend == 'openeye' and has_openeye:
+        if not isinstance(molecule, (oechem.OEMol, oechem.OEMolBase, oechem.OEGraphMol)):
+            raise TypeError("If using openeye must have an oemol")
+        stereo = _is_stereo_defined_oe(molecule)
+
+    if backend == 'rdkit' and has_rdkit:
+        if not isinstance(molecule, Chem.Mol):
+            raise TypeError("If using rdkit, must provide an rdkit.Chem.Mol")
+        stereo = _is_stereo_defined_rd(molecule)
+
+    else:
+        raise TypeError("only openeye and rdkit are supported")
+    return stereo
+
+
+def _is_stereo_defined_oe(molecule):
+    """
+    Check if any stereochemistry in undefined.
+    Parameters
+    ----------
+    molecule: OEMol
+
+    Returns
+    -------
+    bool: True if all stereo chemistry is defined.
+        If any stereochemsitry is undefined, raise and exception.
+
+    """
 
     if has_openeye:
         if not oechem.OEChemIsLicensed():
             raise ImportError("Must have oechem License!")
     else:
-        raise ImportError("Must have openeey installed")
+        raise ImportError("Must have openeye installed")
 
     unspec_chiral = False
     unspec_db = False
@@ -422,27 +341,16 @@ def check_stereochemistry(molecule):
                 unspec_chiral = True
                 problematic_atoms.append((atom.GetIdx(), oechem.OEGetAtomicSymbol(atom.GetAtomicNum())))
     for bond in molecule.GetBonds():
-        # if bond.IsChiral() and not bond.HasStereoSpecified():
-        #     for atomB in bond.GetBgn().GetAtoms():
-        #         if atomB == bond.GetEnd():
-        #             continue
-        #         for atomE in bond.GetEnd().GetAtoms():
-        #             if atomE == bond.GetBgn():
-        #                 continue
-        #             v = []
-        #             v.append(atomB)
-        #             v.append(atomE)
-        #             stereo = bond.GetStereo(v, oechem.OEBondStereo_CisTrans)
         if bond.IsChiral() and not bond.HasStereoSpecified(oechem.OEBondStereo_CisTrans):
             v = []
             for neigh in bond.GetBgn().GetAtoms():
                 if neigh != bond.GetEnd():
                     v.append(neigh)
-                    #break
+                    break
             for neigh in bond.GetEnd().GetAtoms():
                 if neigh != bond.GetBgn():
                     v.append(neigh)
-                    #break
+                    break
             stereo = bond.GetStereo(v, oechem.OEBondStereo_CisTrans)
 
             if stereo == oechem.OEBondStereo_Undefined:
@@ -464,7 +372,86 @@ def check_stereochemistry(molecule):
         return True
 
 
+def _is_stereo_defined_rd(molecule):
+    """
+
+    Parameters
+    ----------
+    molecule
+
+    Returns
+    -------
+
+    """
+
+    unspec_chiral = False
+    unspec_db = False
+    problematic_atoms = list()
+    problematic_bonds = list()
+    chiral_centers = Chem.FindMolChiralCenters(molecule, includeUnassigned=True)
+    for center in chiral_centers:
+        atom_id = center[0]
+        if center[-1] == '?':
+            unspec_chiral = True
+            problematic_atoms.append((atom_id, molecule.GetAtomWithIdx(atom_id).GetSmarts()))
+
+    # Find potential stereo bonds that are unspecified
+    Chem.FindPotentialStereoBonds(molecule)
+    for bond in molecule.GetBonds():
+        if bond.GetStereo() == Chem.BondStereo.STEREOANY:
+            unspec_db = True
+            problematic_bonds.append((bond.GetBeginAtom().GetSmarts(), bond.GetSmarts(),
+                                                    bond.GetEndAtom().GetSmarts()))
+    if unspec_chiral or unspec_db:
+        raise ValueError("Stereochemistry is unspecified. Problematic atoms {}, problematic bonds {}".format(problematic_atoms,
+                                                                                                             problematic_bonds))
+    else:
+        return True
+
+
+def has_explicit_hydrogen(molecule):
+    """
+    Check if molecule has explicit hydrogen. In OpenEye, molecules created from explicit hydrogen SMILES will have
+    explicit hydrogen.
+    Parameters
+    ----------
+    molecule
+
+    Returns
+    -------
+
+    """
+    if has_openeye:
+        if isinstance(molecule, (oechem.OEMol, oechem.OEMolBase, oechem.OEGraphMol)):
+            backend = 'openeye'
+    if has_rdkit:
+        if isinstance(molecule, Chem.Mol):
+            backend = 'rdkit'
+    if backend == 'openeye':
+        for a in molecule.GetAtoms():
+            if a.GetImplicitHCount() > 0:
+                # The molecule was generated from an implicit hydrogen SMILES
+                raise ValueError("Input SMILES is missing explicit hydrogen")
+    if backend == 'rdkit':
+        # Not implemented because I do not know how to check for this in RDKit.
+        pass
+
+
 def canonical_order_atoms_oe(molecule, in_place=True):
+    """
+    Canonical order of atom indices. This ensures the map indices are always in the same order.
+    Parameters
+    ----------
+    molecule: oechem.OEMol
+    in_place: bool, optional, default True
+        If True, the order of atom indices will happen in place. If False, a copy of the molecule with reordered atom
+        indices will be returned.
+
+    Returns
+    -------
+    molecule: OEMol with canonical ordered atom indices.
+
+    """
 
     if not in_place:
         molecule = copy.deepcopy(molecule)
@@ -509,7 +496,7 @@ def canonical_order_atoms_rd(molecule, h_last=True):
     molecule: rdkit molecule with map indices that correspond to the atom canonical rank
     """
 
-    # Check if molecule already has map. If it does, remove map because Che.CanonicalRankAtoms uses map indices in ranking
+    # Check if molecule already has map. If it does, remove map because Chem.CanonicalRankAtoms uses map indices in ranking
     if is_mapped(molecule):
         remove_map(molecule)
 

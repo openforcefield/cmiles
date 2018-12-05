@@ -22,15 +22,13 @@ from .utils import get_fn
 using_rdkit = pytest.mark.skipif(rdkit_missing, reason="Cannot run without RDKit")
 using_openeye = pytest.mark.skipif(openeye_missing, reason="Cannot run without OpenEye")
 
+
 @using_openeye
 def test_load_molecule():
     """Test load molecules"""
-    inputs = ['CCCC', get_fn('butane.pdb'), get_fn('butane.smi'), get_fn('butane.xyz')]
-    outputs = []
-    for i in inputs:
-        outputs.append(cmiles.utils.load_molecule(i))
-    for o in outputs:
-        assert oechem.OEMolToSmiles((o)) == 'CCCC'
+    mol = cmiles.utils.load_molecule('[H]C([H])([H])C([H])([H])C([H])([H])C([H])([H])[H]')
+    assert oechem.OEMolToSmiles(mol) == 'CCCC'
+
 
 @using_openeye
 def test_is_mapped_oe():
@@ -101,9 +99,41 @@ def test_mol_from_json_rd():
         for j in range(3):
             assert coordinates[i][j] == pytest.approx(geometry[i][j], 0.0000001)
 
+@using_openeye
+@pytest.mark.parametrize("input1, input2", [('C[C@](N)(O)F', 'CC(N)(O)F'),
+                                   ('C(=C/Cl)\\F', 'C(=CCl)F'),
+                                   ('CN(C)C/C=C/C(=O)NC1=C(C=C2C(=C1)C(=NC=N2)NC3=CC(=C(C=C3)F)Cl)O[C@H]4CCOC4',
+                                   'CN(C)CC=CC(=O)NC1=C(C=C2C(=C1)C(=NC=N2)NC3=CC(=C(C=C3)F)Cl)O[C@H]4CCOC4'),
+                                   ('CN(C)C/C=C/C(=O)NC1=C(C=C2C(=C1)C(=NC=N2)NC3=CC(=C(C=C3)F)Cl)O[C@H]4CCOC4',
+                                   'CN(C)C/C=C/C(=O)NC1=C(C=C2C(=C1)C(=NC=N2)NC3=CC(=C(C=C3)F)Cl)OC4CCOC4')])
+def test_has_stereochemistry_oe(input1, input2):
+    mol = oechem.OEMol()
+    oechem.OESmilesToMol(mol, input1)
+    oechem.OEAddExplicitHydrogens(mol)
+    assert cmiles.utils.is_stereo_defined(mol, backend='openeye')
 
-def test_has_stereochemistry():
-    pass
+    mol = oechem.OEMol()
+    oechem.OESmilesToMol(mol, input2)
+    oechem.OEAddExplicitHydrogens(mol)
+    with pytest.raises(ValueError):
+        cmiles.utils.is_stereo_defined(mol, backend='openeye')
+
+@using_rdkit
+@pytest.mark.parametrize("input1, input2", [('C[C@](N)(O)F', 'CC(N)(O)F'),
+                                   ('C(=C/Cl)\\F', 'C(=CCl)F'),
+                                   ('CN(C)C/C=C/C(=O)NC1=C(C=C2C(=C1)C(=NC=N2)NC3=CC(=C(C=C3)F)Cl)O[C@H]4CCOC4',
+                                   'CN(C)CC=CC(=O)NC1=C(C=C2C(=C1)C(=NC=N2)NC3=CC(=C(C=C3)F)Cl)O[C@H]4CCOC4'),
+                                   ('CN(C)C/C=C/C(=O)NC1=C(C=C2C(=C1)C(=NC=N2)NC3=CC(=C(C=C3)F)Cl)O[C@H]4CCOC4',
+                                   'CN(C)C/C=C/C(=O)NC1=C(C=C2C(=C1)C(=NC=N2)NC3=CC(=C(C=C3)F)Cl)OC4CCOC4')])
+def test_has_stereochemistry_oe(input1, input2):
+    mol = Chem.MolFromSmiles(input1)
+    mol = Chem.AddHs(mol)
+    assert cmiles.utils.is_stereo_defined(mol, backend='rdkit')
+
+    mol = Chem.MolFromSmiles(input2)
+    mol = Chem.AddHs(mol)
+    with pytest.raises(ValueError):
+        cmiles.utils.is_stereo_defined(mol, backend='rdkit')
 
 
 @using_openeye
@@ -118,7 +148,7 @@ def test_canonical_order():
 
     assert oechem.OEMolToSmiles(mol) == '[H:1][O:2][O:3][H:4]'
 
-    mol_2 = cmiles.utils.canonical_order_atoms(mol, in_place=False)
+    mol_2 = cmiles.utils.canonical_order_atoms_oe(mol, in_place=False)
     for atom in mol.GetAtoms():
         atom.SetMapIdx(atom.GetIdx() + 1)
     for atom in mol_2.GetAtoms():
@@ -126,7 +156,7 @@ def test_canonical_order():
     assert oechem.OEMolToSmiles(mol) == '[H:1][O:2][O:3][H:4]'
     assert oechem.OEMolToSmiles(mol_2) == '[H:3][O:1][O:2][H:4]'
 
-    cmiles.utils.canonical_order_atoms(mol, in_place=True)
+    cmiles.utils.canonical_order_atoms_oe(mol, in_place=True)
     for atom in mol.GetAtoms():
         atom.SetMapIdx(atom.GetIdx() + 1)
     assert oechem.OEMolToSmiles(mol) == '[H:3][O:1][O:2][H:4]'
@@ -150,3 +180,33 @@ def test_canonical_order_rd():
     mol_3 = cmiles.utils.canonical_order_atoms_rd(mol)
     assert Chem.MolToSmiles(mol_3) == '[O:1]([C:2]([H:4])([H:5])[H:6])[H:3]'
 
+
+@using_openeye
+def test_explicit_h():
+    """Test input SMILES for explicit H"""
+
+    implicit_h = 'COC(C)c1c(Cl)ccc(F)c1Cl'
+    some_explicit_h = 'C[C@@H](c1c(ccc(c1Cl)F)Cl)OC'
+    explicit_h = '[H]c1c(c(c(c(c1F)Cl)[C@]([H])(C([H])([H])[H])OC([H])([H])[H])Cl)[H]'
+    mapped = '[C:1]([O:2][H:6])([H:3])([H:4])[H:5]'
+
+    assert implicit_h.find('H') == -1
+    assert some_explicit_h.find('H')
+    assert explicit_h.find('H')
+    assert mapped.find('H')
+
+    mol = oechem.OEMol()
+    oechem.OESmilesToMol(mol, implicit_h)
+    assert cmiles.utils.has_explicit_hydrogen(mol) == False
+
+    mol = oechem.OEMol()
+    oechem.OESmilesToMol(mol, some_explicit_h)
+    cmiles.utils.has_explicit_hydrogen(mol) == False
+
+    mol = oechem.OEMol()
+    oechem.OESmilesToMol(mol, explicit_h)
+    assert cmiles.utils.has_explicit_hydrogen(mol)
+
+    mol = oechem.OEMol()
+    oechem.OESmilesToMol(mol, mapped)
+    assert cmiles.utils.has_explicit_hydrogen(mol)

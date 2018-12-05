@@ -290,7 +290,7 @@ def to_canonical_smiles_oe(molecule, isomeric, explicit_hydrogen, mapped):
 
     # Add tags to molecule
     if not JSON_geometry:
-        cmiles.utils.canonical_order_atoms(molecule)
+        cmiles.utils.canonical_order_atoms_oe(molecule)
         # canonical order of atoms if input was SMILES. For JSON serialized molecule, keep the original order.
     for atom in molecule.GetAtoms():
         atom.SetMapIdx(atom.GetIdx() + 1)

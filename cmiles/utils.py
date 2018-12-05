@@ -17,15 +17,18 @@ except ImportError:
     has_openeye = False
 
 
-_symbols = {'H':1,'He':2,
-            'Li':3,'Be':4,'B':5,'C':6,'N':7,'O':8,'F':9,'Ne':10,
-            'Na':11,'Mg':12,'Al':13,'Si':14,'P':15,'S':16,'Cl':17,'Ar':18,
-            'K':19,'Ca':20,'Sc':21,'Ti':22,'V':23,'Cr':24,'Mn':25,'Fe':26,'Co':27,'Ni':28,'Cu':29,'Zn':30,'Ga':31,'Ge':32,'As':33,'Se':34,'Br':35,'Kr':36,
-            'Rb':37,'Sr':38,'Y':39,'Zr':40,'Nb':41,'Mo':42,'Tc':43,'Ru':44,'Rh':45,'Pd':46,'Ag':47,'Cd':48,'In':49,'Sn':50,'Sb':51,'Te':52,'I':53,'Xe':54,
-            'Cs':55,'Ba':56,'La':57,'Ce':58,'Pr':59,'Nd':60,'Pm':61,'Sm':62,'Eu':63,'Gd':64,'Tb':65,'Dy':66,'Ho':67,'Er':68,'Tm':69,'Yb':70,
-            'Lu':71,'Hf':72,'Ta':73,'W':74,'Re':75,'Os':76,'Ir':77,'Pt':78,'Au':79,'Hg':80,'Tl':81,'Pb':82,'Bi':83,'Po':84,'At':85,'Rn':86,
-            'Fr':87,'Ra':88,'Ac':89,'Th':90,'Pa':91,'U':92,'Np':93,'Pu':94,'Am':95,'Cm':96,'Bk':97,'Cf':98,'Es':99,'Fm':100,'Md':101,'No':102,'Lr':103,
-            'Rf':104,'Db':105,'Sg':106,'Bh':107,'Hs':108,'Mt':109}
+_symbols = {'H': 1, 'He': 2,
+            'Li': 3, 'Be': 4, 'B': 5, 'C': 6, 'N': 7, 'O': 8, 'F': 9, 'Ne': 10,
+            'Na': 11, 'Mg': 12, 'Al': 13,' Si': 14, 'P': 15, 'S': 16, 'Cl': 17, 'Ar': 18,
+            'K': 19, 'Ca': 20, 'Sc': 21, 'Ti': 22, 'V': 23, 'Cr': 24, 'Mn': 25, 'Fe': 26, 'Co': 27, 'Ni': 28, 'Cu': 29,
+            'Zn': 30, 'Ga': 31, 'Ge': 32, 'As': 33, 'Se': 34, 'Br': 35, 'Kr': 36, 'Rb': 37, 'Sr': 38, 'Y': 39, 'Zr': 40,
+            'Nb': 41, 'Mo': 42, 'Tc': 43, 'Ru': 44, 'Rh': 45, 'Pd': 46, 'Ag': 47, 'Cd': 48, 'In': 49, 'Sn': 50, 'Sb': 51,
+            'Te': 52, 'I': 53, 'Xe': 54, 'Cs': 55, 'Ba': 56, 'La': 57, 'Ce': 58, 'Pr': 59, 'Nd': 60, 'Pm': 61, 'Sm': 62,
+            'Eu': 63,' Gd': 64, 'Tb': 65, 'Dy': 66, 'Ho': 67, 'Er': 68, 'Tm': 69, 'Yb': 70, 'Lu': 71, 'Hf': 72, 'Ta': 73,
+            'W': 74, 'Re': 75, 'Os': 76, 'Ir': 77, 'Pt': 78, 'Au': 79, 'Hg': 80, 'Tl': 81, 'Pb': 82, 'Bi': 83, 'Po':84,
+            'At': 85, 'Rn': 86, 'Fr': 87, 'Ra': 88, 'Ac': 89, 'Th': 90,' Pa': 91, 'U': 92, 'Np': 93, 'Pu': 94, 'Am': 95,
+            'Cm': 96, 'Bk': 97, 'Cf': 98, 'Es': 99, 'Fm': 100, 'Md': 101, 'No': 102, 'Lr': 103, 'Rf': 104, 'Db': 105,
+            'Sg': 106, 'Bh': 107, 'Hs': 108, 'Mt': 109}
 BOHR_2_ANGSTROM = 0.529177210
 ANGSROM_2_BOHR = 1. / BOHR_2_ANGSTROM
 
@@ -65,7 +68,8 @@ def load_molecule(inp_molecule, backend='openeye'):
 
         elif backend == 'openeye':
             if not has_openeye:
-                raise RuntimeError("You need to have OpenEye installed or an up-to-date license to use the openeye backend")
+                raise RuntimeError("You need to have OpenEye installed or an up-to-date license to use the openeye "
+                                   "backend")
             molecule = oechem.OEMol()
             if not oechem.OESmilesToMol(molecule, inp_molecule):
                 raise ValueError("The supplied SMILES {} could not be parsed".format(inp_molecule))
@@ -296,7 +300,7 @@ def is_stereo_defined(molecule, backend='openeye'):
             raise TypeError("If using openeye must have an oemol")
         stereo = _is_stereo_defined_oe(molecule)
 
-    if backend == 'rdkit' and has_rdkit:
+    elif backend == 'rdkit' and has_rdkit:
         if not isinstance(molecule, Chem.Mol):
             raise TypeError("If using rdkit, must provide an rdkit.Chem.Mol")
         stereo = _is_stereo_defined_rd(molecule)
@@ -364,10 +368,9 @@ def _is_stereo_defined_oe(molecule):
                 bond_order = bond.GetOrder()
                 problematic_bonds.append((a1_idx, a1_s, a2_idx, a2_s, bond_order))
     if unspec_chiral or unspec_db:
-        print("Stereochemistry is unspecified. Problematic atoms {}, problematic bonds {}".format(problematic_atoms,
-                                                                                                             problematic_bonds))
-        raise ValueError("Stereochemistry is unspecified. Problematic atoms {}, problematic bonds {}".format(problematic_atoms,
-                                                                                                             problematic_bonds))
+        raise ValueError("Stereochemistry is unspecified. Problematic atoms {}, problematic bonds {}".format(
+                problematic_atoms,
+                problematic_bonds))
     else:
         return True
 
@@ -403,8 +406,8 @@ def _is_stereo_defined_rd(molecule):
             problematic_bonds.append((bond.GetBeginAtom().GetSmarts(), bond.GetSmarts(),
                                                     bond.GetEndAtom().GetSmarts()))
     if unspec_chiral or unspec_db:
-        raise ValueError("Stereochemistry is unspecified. Problematic atoms {}, problematic bonds {}".format(problematic_atoms,
-                                                                                                             problematic_bonds))
+        raise ValueError("Stereochemistry is unspecified. Problematic atoms {}, problematic bonds {}".format(
+                problematic_atoms, problematic_bonds))
     else:
         return True
 
@@ -421,6 +424,7 @@ def has_explicit_hydrogen(molecule):
     -------
 
     """
+    explicit = True
     if has_openeye:
         if isinstance(molecule, (oechem.OEMol, oechem.OEMolBase, oechem.OEGraphMol)):
             backend = 'openeye'
@@ -431,10 +435,13 @@ def has_explicit_hydrogen(molecule):
         for a in molecule.GetAtoms():
             if a.GetImplicitHCount() > 0:
                 # The molecule was generated from an implicit hydrogen SMILES
-                raise ValueError("Input SMILES is missing explicit hydrogen")
+                explicit = False
+
     if backend == 'rdkit':
         # Not implemented because I do not know how to check for this in RDKit.
         pass
+
+    return explicit
 
 
 def canonical_order_atoms_oe(molecule, in_place=True):
@@ -496,7 +503,8 @@ def canonical_order_atoms_rd(molecule, h_last=True):
     molecule: rdkit molecule with map indices that correspond to the atom canonical rank
     """
 
-    # Check if molecule already has map. If it does, remove map because Chem.CanonicalRankAtoms uses map indices in ranking
+    # Check if molecule already has map. If it does, remove map because Chem.CanonicalRankAtoms uses map indices in
+    # ranking
     if is_mapped(molecule):
         remove_map(molecule)
 

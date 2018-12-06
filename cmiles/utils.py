@@ -3,6 +3,7 @@ Utility functions for cmiles generator
 """
 import copy
 import numpy as np
+import warnings
 
 try:
     from rdkit import Chem
@@ -55,9 +56,10 @@ def load_molecule(inp_molecule, backend='openeye'):
         molecule = mol_from_json(inp_molecule, backend=backend)
 
     elif isinstance(inp_molecule, str):
-        # Check for explicit H. This is not an exhaustive check but will catch many cases
+        # Check for explicit H. This is not an exhaustive check but will catch many cases. It will also catch false
+        # negatives so
         if inp_molecule.find('H') == -1:
-            raise ValueError("{} is does not have explicit hydrogen".format(inp_molecule))
+            warnings.warn("{} might be missing explicit hydrogen. Double-check your input".format(inp_molecule))
 
         if backend == 'rdkit':
             if not has_rdkit:

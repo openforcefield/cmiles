@@ -4,6 +4,7 @@ import cmiles
 import pytest
 from pkg_resources import resource_filename
 import os
+import warnings
 
 rdkit_missing = False
 try:
@@ -209,4 +210,12 @@ def test_explicit_h():
 
     mol = oechem.OEMol()
     oechem.OESmilesToMol(mol, mapped)
+    assert cmiles.utils.has_explicit_hydrogen(mol)
+
+    # no need for H
+    o = 'O=O'
+    with pytest.warns(UserWarning):
+        cmiles.utils.load_molecule(o)
+    mol = oechem.OEMol()
+    oechem.OESmilesToMol(mol, o)
     assert cmiles.utils.has_explicit_hydrogen(mol)

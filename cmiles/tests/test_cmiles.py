@@ -290,7 +290,7 @@ def test_drug_bank_rd(input, output):
 
 
 @using_openeye
-@pytest.mark.parametrize("input, output", get_smiles_lists(get_fn('drug_bank_sm.smi'), get_fn('drug_bank_mapped_smi_oe.smi')))
+@pytest.mark.parametrize("input, output", get_smiles_lists(get_fn('drug_bank_stereo.smi'), get_fn('drug_bank_mapped_smi_oe_test.smi')))
 def test_drug_bank_oe(input, output):
     """
 

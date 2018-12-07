@@ -56,14 +56,11 @@ def load_molecule(inp_molecule, backend='openeye'):
         molecule = mol_from_json(inp_molecule, backend=backend)
 
     elif isinstance(inp_molecule, str):
-        # Check for explicit H. This is not an exhaustive check but will catch many cases. It will also catch false
-        # negatives so
-        if inp_molecule.find('H') == -1:
-            warnings.warn("{} might be missing explicit hydrogen. Double-check your input".format(inp_molecule))
 
         if backend == 'rdkit':
             if not has_rdkit:
                 raise RuntimeError("You need to have RDKit installed to use the RDKit backend")
+            # Check for explicit hydrogen
             molecule = Chem.MolFromSmiles(inp_molecule)
             if not molecule:
                 raise ValueError("The supplied SMILES {} could not be parsed".format(inp_molecule))
@@ -285,7 +282,7 @@ def remove_map(molecule):
             raise TypeError("Only openeye and rdkit are supported backends")
 
 
-def is_stereo_defined(molecule, backend='openeye'):
+def has_stereo_defined(molecule, backend='openeye'):
     """
 
     Parameters
@@ -300,19 +297,19 @@ def is_stereo_defined(molecule, backend='openeye'):
     if backend == 'openeye' and has_openeye:
         if not isinstance(molecule, (oechem.OEMol, oechem.OEMolBase, oechem.OEGraphMol)):
             raise TypeError("If using openeye must have an oemol")
-        stereo = _is_stereo_defined_oe(molecule)
+        stereo = _has_stereo_defined_oe(molecule)
 
     elif backend == 'rdkit' and has_rdkit:
         if not isinstance(molecule, Chem.Mol):
             raise TypeError("If using rdkit, must provide an rdkit.Chem.Mol")
-        stereo = _is_stereo_defined_rd(molecule)
+        stereo = _has_stereo_defined_rd(molecule)
 
     else:
         raise TypeError("only openeye and rdkit are supported")
     return stereo
 
 
-def _is_stereo_defined_oe(molecule):
+def _has_stereo_defined_oe(molecule):
     """
     Check if any stereochemistry in undefined.
     Parameters
@@ -348,27 +345,28 @@ def _is_stereo_defined_oe(molecule):
                 problematic_atoms.append((atom.GetIdx(), oechem.OEGetAtomicSymbol(atom.GetAtomicNum())))
     for bond in molecule.GetBonds():
         if bond.IsChiral() and not bond.HasStereoSpecified(oechem.OEBondStereo_CisTrans):
-            v = []
-            for neigh in bond.GetBgn().GetAtoms():
-                if neigh != bond.GetEnd():
-                    v.append(neigh)
-                    break
-            for neigh in bond.GetEnd().GetAtoms():
-                if neigh != bond.GetBgn():
-                    v.append(neigh)
-                    break
-            stereo = bond.GetStereo(v, oechem.OEBondStereo_CisTrans)
+            if not _check_chiral_exception(molecule, bond):
+                v = []
+                for neigh in bond.GetBgn().GetAtoms():
+                    if neigh != bond.GetEnd():
+                        v.append(neigh)
+                        break
+                for neigh in bond.GetEnd().GetAtoms():
+                    if neigh != bond.GetBgn():
+                        v.append(neigh)
+                        break
+                stereo = bond.GetStereo(v, oechem.OEBondStereo_CisTrans)
 
-            if stereo == oechem.OEBondStereo_Undefined:
-                unspec_db = True
-                a1 = bond.GetBgn()
-                a2 = bond.GetEnd()
-                a1_idx = a1.GetIdx()
-                a2_idx = a2.GetIdx()
-                a1_s = oechem.OEGetAtomicSymbol(a1.GetAtomicNum())
-                a2_s = oechem.OEGetAtomicSymbol(a2.GetAtomicNum())
-                bond_order = bond.GetOrder()
-                problematic_bonds.append((a1_idx, a1_s, a2_idx, a2_s, bond_order))
+                if stereo == oechem.OEBondStereo_Undefined:
+                    unspec_db = True
+                    a1 = bond.GetBgn()
+                    a2 = bond.GetEnd()
+                    a1_idx = a1.GetIdx()
+                    a2_idx = a2.GetIdx()
+                    a1_s = oechem.OEGetAtomicSymbol(a1.GetAtomicNum())
+                    a2_s = oechem.OEGetAtomicSymbol(a2.GetAtomicNum())
+                    bond_order = bond.GetOrder()
+                    problematic_bonds.append((a1_idx, a1_s, a2_idx, a2_s, bond_order))
     if unspec_chiral or unspec_db:
         raise ValueError("Stereochemistry is unspecified. Problematic atoms {}, problematic bonds {}".format(
                 problematic_atoms,
@@ -377,7 +375,7 @@ def _is_stereo_defined_oe(molecule):
         return True
 
 
-def _is_stereo_defined_rd(molecule):
+def _has_stereo_defined_rd(molecule):
     """
 
     Parameters
@@ -414,7 +412,24 @@ def _is_stereo_defined_rd(molecule):
         return True
 
 
-def has_explicit_hydrogen(molecule):
+def _check_chiral_exception(molecule, bond):
+    ignore = False
+    beg = bond.GetBgn()
+    end = bond.GetEnd()
+    if beg.GetAtomicNum() == 7 and end.GetAtomicNum() == 6 and bond.GetOrder() == 2:
+        placeholder = beg
+        beg = end
+        end = placeholder
+
+    if beg.GetAtomicNun() == 6 and end.GetAtomicNum() == 7 and bond.GetOrder == 2:
+        for a in end.GetAtoms():
+            if a != beg and a.GetAtomicNum() == 1:
+                # This is a C=NH bond and should be ignored when flagged
+                ignore = True
+    return ignore
+
+
+def has_explicit_hydrogen(molecule, backend='openeye'):
     """
     Check if molecule has explicit hydrogen. In OpenEye, molecules created from explicit hydrogen SMILES will have
     explicit hydrogen.
@@ -427,21 +442,20 @@ def has_explicit_hydrogen(molecule):
 
     """
     explicit = True
-    if has_openeye:
-        if isinstance(molecule, (oechem.OEMol, oechem.OEMolBase, oechem.OEGraphMol)):
-            backend = 'openeye'
-    if has_rdkit:
-        if isinstance(molecule, Chem.Mol):
-            backend = 'rdkit'
     if backend == 'openeye':
-        for a in molecule.GetAtoms():
-            if a.GetImplicitHCount() > 0:
+        if isinstance(molecule, (Chem.rdchem.Mol, Chem.Mol)):
+            raise UserWarning("Use rdkit backend for rdkit Mol")
+        if oechem.OEHasImplicitHydrogens(molecule):
                 # The molecule was generated from an implicit hydrogen SMILES
                 explicit = False
-
-    if backend == 'rdkit':
-        # Not implemented because I do not know how to check for this in RDKit.
-        pass
+    elif backend == 'rdkit':
+        if isinstance(molecule, (oechem.OEMol, oechem.OEMolBase, oechem.OEGraphMol)):
+            raise UserWarning("Use OpenEye backend for oemol")
+        for a in molecule.GetAtoms():
+            if a.GetImplicitValence() > 0:
+                explicit = False
+    else:
+        raise RuntimeError("Must have either RDKit or Openeye installed")
 
     return explicit
 

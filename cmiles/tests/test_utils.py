@@ -111,13 +111,13 @@ def test_has_stereochemistry_oe(input1, input2):
     mol = oechem.OEMol()
     oechem.OESmilesToMol(mol, input1)
     oechem.OEAddExplicitHydrogens(mol)
-    assert cmiles.utils.is_stereo_defined(mol, backend='openeye')
+    assert cmiles.utils.hass_stereo_defined(mol, backend='openeye')
 
     mol = oechem.OEMol()
     oechem.OESmilesToMol(mol, input2)
     oechem.OEAddExplicitHydrogens(mol)
     with pytest.raises(ValueError):
-        cmiles.utils.is_stereo_defined(mol, backend='openeye')
+        cmiles.utils.has_stereo_defined(mol, backend='openeye')
 
 @using_rdkit
 @pytest.mark.parametrize("input1, input2", [('C[C@](N)(O)F', 'CC(N)(O)F'),
@@ -129,12 +129,12 @@ def test_has_stereochemistry_oe(input1, input2):
 def test_has_stereochemistry_oe(input1, input2):
     mol = Chem.MolFromSmiles(input1)
     mol = Chem.AddHs(mol)
-    assert cmiles.utils.is_stereo_defined(mol, backend='rdkit')
+    assert cmiles.utils.has_stereo_defined(mol, backend='rdkit')
 
     mol = Chem.MolFromSmiles(input2)
     mol = Chem.AddHs(mol)
     with pytest.raises(ValueError):
-        cmiles.utils.is_stereo_defined(mol, backend='rdkit')
+        cmiles.utils.has_stereo_defined(mol, backend='rdkit')
 
 
 @using_openeye
@@ -183,7 +183,7 @@ def test_canonical_order_rd():
 
 
 @using_openeye
-def test_explicit_h():
+def test_explicit_h_oe():
     """Test input SMILES for explicit H"""
 
     implicit_h = 'COC(C)c1c(Cl)ccc(F)c1Cl'
@@ -214,8 +214,39 @@ def test_explicit_h():
 
     # no need for H
     o = 'O=O'
-    with pytest.warns(UserWarning):
-        cmiles.utils.load_molecule(o)
     mol = oechem.OEMol()
     oechem.OESmilesToMol(mol, o)
     assert cmiles.utils.has_explicit_hydrogen(mol)
+
+
+def test_explicit_h_rd():
+    """Test input SMILES for explicit H"""
+
+    implicit_h = 'COC(C)c1c(Cl)ccc(F)c1Cl'
+    some_explicit_h = 'C[C@@H](c1c(ccc(c1Cl)F)Cl)OC'
+    explicit_h = '[H]c1c(c(c(c(c1F)Cl)[C@]([H])(C([H])([H])[H])OC([H])([H])[H])Cl)[H]'
+    mapped = '[C:1]([O:2][H:6])([H:3])([H:4])[H:5]'
+
+    mol = Chem.MolFromSmiles(implicit_h)
+    assert cmiles.utils.has_explicit_hydrogen(mol, backend='rdkit') == False
+
+    mol = Chem.MolFromSmiles(some_explicit_h)
+    cmiles.utils.has_explicit_hydrogen(mol, backend='rdkit') == False
+
+    mol = Chem.MolFromSmiles(explicit_h)
+    assert cmiles.utils.has_explicit_hydrogen(mol, backend='rdkit')
+
+    mol = Chem.MolFromSmiles(mapped)
+    assert cmiles.utils.has_explicit_hydrogen(mol, backend='rdkit')
+
+    # no need for H
+    o = 'O=O'
+    mol = Chem.MolFromSmiles(o)
+    assert cmiles.utils.has_explicit_hydrogen(mol, backend='rdkit')
+
+
+# @using_openeye
+# def test_chiral_bond_exception():
+#     """ Test bonds to ignore """
+#     smiles_1 = 'CN(C)C(=N)NC(=N)N'
+#     smiles_2 =

@@ -85,8 +85,9 @@ def to_molecule_id(molecule, canonicalization='openeye'):
     if cmiles.utils.is_mapped(molecule):
         cmiles.utils.remove_map(molecule)
     # check for explicit hydrogen
-    if not cmiles.utils.has_explicit_hydrogen(molecule):
-        raise ValueError("Input molecule is missing explicit hydrogen")
+    if not cmiles.utils.has_explicit_hydrogen(molecule, backend=canonicalization):
+        warnings.warn("Input molecule is missing explicit hydrogen. In some cases this can lead to hydrogen placement "
+                      "that are different than you intended")
 
     # check for fully defined stereochemistry
 
@@ -119,7 +120,7 @@ def to_molecule_id(molecule, canonicalization='openeye'):
         smiles['canonical_isomeric_explicit_hydrogen_smiles'] = to_canonical_smiles_rd(molecule, isomeric=True,
                                                                                         explicit_hydrogen=True,
                                                                                         mapped=False)
-        smiles['canonical_explicit_hydrogen_smiles'] = to_canonical_smiles_rd(molecule_copy, isomeric=False,
+        smiles['canonical_explicit_hydrogen_smiles'] = to_canonical_smiles_rd(molecule, isomeric=False,
                                                                                explicit_hydrogen=True, mapped=False)
         smiles['canonical_isomeric_explicit_hydrogen_mapped_smiles'] = to_canonical_smiles_rd(molecule, isomeric=True,
                                                                                                explicit_hydrogen=True,
@@ -199,7 +200,7 @@ def to_canonical_smiles_rd(molecule, isomeric, explicit_hydrogen, mapped):
     except KeyError:
         json_geometry = False
 
-    if isomeric and not cmiles.utils.is_stereo_defined(molecule):
+    if isomeric and not cmiles.utils.has_stereo_defined(molecule, backend='rdkit'):
         raise ValueError("Some stereochemistry is not defined")
 
     # Get canonical order for map
@@ -252,11 +253,7 @@ def to_canonical_smiles_oe(molecule, isomeric, explicit_hydrogen, mapped):
 
     # check molecule
     if not isinstance(molecule, (oechem.OEMol, oechem.OEGraphMol, oechem.OEMolBase)):
-        warnings.warn("molecule must be OEMol. Converting to OEMol", UserWarning)
-        rd_mol = molecule
-        molecule = oechem.OEMol()
-        if not oechem.OESmilesToMol(molecule, rd.Chem.MolToSmiles(rd_mol)):
-            raise ValueError("Cannot convert RDMol to OEMol")
+        raise TypeError("Must use oemol for openeye backend")
     molecule = oechem.OEMol(molecule)
 
     if explicit_hydrogen:
@@ -273,7 +270,7 @@ def to_canonical_smiles_oe(molecule, isomeric, explicit_hydrogen, mapped):
         oechem.OEPerceiveChiral(molecule)
         oechem.OE3DToAtomStereo(molecule)
         oechem.OE3DToBondStereo(molecule)
-        if not cmiles.utils.check_stereochemistry(molecule):
+        if not cmiles.utils.has_stereo_defined(molecule, backend='openeye'):
             raise ValueError("Smiles must have stereochemistry defined.")
 
     if not explicit_hydrogen and not mapped and isomeric:

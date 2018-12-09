@@ -168,6 +168,8 @@ def _mol_from_json_oe(symbols, connectivity, geometry):
     oechem.OEAssignImplicitHydrogens(molecule)
     oechem.OEAssignFormalCharges(molecule)
     oechem.OEAssignAromaticFlags(molecule)
+    oechem.OE3DToAtomStereo(molecule)
+    oechem.OE3DToBondStereo(molecule)
 
     return molecule
 
@@ -329,6 +331,9 @@ def _has_stereo_defined_oe(molecule):
     else:
         raise ImportError("Must have openeye installed")
 
+    # perceive stereochemistry
+    oechem.OEPerceiveChiral(molecule)
+
     unspec_chiral = False
     unspec_db = False
     problematic_atoms = list()
@@ -345,7 +350,7 @@ def _has_stereo_defined_oe(molecule):
                 problematic_atoms.append((atom.GetIdx(), oechem.OEGetAtomicSymbol(atom.GetAtomicNum())))
     for bond in molecule.GetBonds():
         if bond.IsChiral() and not bond.HasStereoSpecified(oechem.OEBondStereo_CisTrans):
-            if not _ignore_stereo_flag(molecule, bond):
+            if not _ignore_stereo_flag_oe(molecule, bond):
                 v = []
                 for neigh in bond.GetBgn().GetAtoms():
                     if neigh != bond.GetEnd():
@@ -402,8 +407,9 @@ def _has_stereo_defined_rd(molecule):
     Chem.FindPotentialStereoBonds(molecule)
     for bond in molecule.GetBonds():
         if bond.GetStereo() == Chem.BondStereo.STEREOANY:
-            unspec_db = True
-            problematic_bonds.append((bond.GetBeginAtom().GetSmarts(), bond.GetSmarts(),
+            if not _ignore_stereo_flag_rd(molecule, bond):
+                unspec_db = True
+                problematic_bonds.append((bond.GetBeginAtom().GetSmarts(), bond.GetSmarts(),
                                                     bond.GetEndAtom().GetSmarts()))
     if unspec_chiral or unspec_db:
         raise ValueError("Stereochemistry is unspecified. Problematic atoms {}, problematic bonds {}".format(
@@ -412,7 +418,7 @@ def _has_stereo_defined_rd(molecule):
         return True
 
 
-def _ignore_stereo_flag(molecule, bond):
+def _ignore_stereo_flag_oe(molecule, bond):
     ignore = False
     beg = bond.GetBgn()
     end = bond.GetEnd()
@@ -426,6 +432,27 @@ def _ignore_stereo_flag(molecule, bond):
 
     if (beg.GetAtomicNum() == 6) and (end.GetAtomicNum() == 7) and (bond.GetOrder() == 2):
         for a in end.GetAtoms():
+            if a != beg and a.GetAtomicNum() == 1:
+                # This is a C=NH bond and should be ignored when flagged
+                ignore = True
+                break
+    return ignore
+
+
+def _ignore_stereo_flag_rd(molecule, bond):
+    ignore = False
+    beg = bond.GetBeginAtom()
+    end = bond.GetEndAtom()
+
+    if (beg.GetAtomicNum() == 7) and (end.GetAtomicNum() == 6) and (bond.GetBondType() == Chem.BondType.DOUBLE):
+        for a in beg.GetNeighbors():
+            if a != end and a.GetAtomicNum() == 1:
+                # This is a C=NH bond and should be ignored when flagged
+                ignore = True
+                break
+
+    if (beg.GetAtomicNum() == 6) and (end.GetAtomicNum() == 7) and (bond.GetBondType() == Chem.BondType.DOUBLE):
+        for a in end.GetNeighbors():
             if a != beg and a.GetAtomicNum() == 1:
                 # This is a C=NH bond and should be ignored when flagged
                 ignore = True

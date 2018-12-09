@@ -257,7 +257,22 @@ def test_chiral_bond_exception(smiles, output):
     oechem.OEAddExplicitHydrogens(mol)
     ignore = False
     for bond in mol.GetBonds():
-        ignore = cmiles.utils._ignore_stereo_flag(mol, bond)
+        ignore = cmiles.utils._ignore_stereo_flag_oe(mol, bond)
         if ignore:
             break
     assert ignore == output
+
+@using_rdkit
+@pytest.mark.parametrize("smiles, output", [('CN(C)C(=N)NC(=N)N', True),
+                                           ('COC1=CC(CN(C)C2=CC=C3N=C(N)N=C(N)C3=C2)=C(OC)C=C1', False),
+                                           ('[H][C@](C)(O)[C@@]([H])(N=C(O)[C@]1([H])C[C@@]([H])(CCC)CN1C)[C@@]1([H])O[C@]([H])(SC)[C@]([H])(O)[C@@]([H])(O)[C@@]1([H])O',
+                                            False)])
+def test_chiral_bond_exception_rd(smiles, output):
+    mol = Chem.MolFromSmiles(smiles)
+    mol = Chem.AddHs(mol)
+    ignore = False
+    for bond in mol.GetBonds():
+        ignore = cmiles.utils._ignore_stereo_flag_rd(mol, bond)
+        if ignore:
+            break
+    assert ignore == ignore

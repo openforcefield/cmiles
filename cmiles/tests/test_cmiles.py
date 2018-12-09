@@ -628,20 +628,32 @@ def _chemical_formula_rd(smiles):
 def test_molecule_formula(backend, smiles, bench):
     assert backend(smiles) == bench
 
+
+def _test_unique_protomer(state1, state2):
+    """Test unique protomer"""
+    mol_1 = cmiles.utils.load_molecule(state1)
+    mol_2 = cmiles.utils.load_molecule(state2)
+    assert cmiles.get_unique_protomer(mol_1) == cmiles.get_unique_protomer(mol_2)
+
+
+def _test_unique_tautomer(state1, state2):
+    """Test standardize tautomer rdkit"""
+    assert cmiles.standardize_tautomer(state1) == cmiles.standardize_tautomer(state2)
+
+@using_rdkit
+@using_openeye
 @pytest.mark.parametrize('state1, state2',
-                          [('CC(=O)O','CC(=O)[O-]'), # protonation states
+                          [
                            ('CN4CCN(c2nc1cc(Cl)ccc1[nH]c3ccccc23)CC4', 'CN4CCN(c2[nH]c1cc(Cl)ccc1nc3ccccc23)CC4'), # 1,5 tautomerism
                            ('CC=CC(=O)C', 'CC(=CC=C)O'), #keto-enol
                            ('NC=O', 'N=CO'), # amide - imidic
                            ('C1CC(=O)NC1', 'C1CC(O)=NC1'), # lactam-lactim
-                           ('NCC(=O)O', '[NH3+]CC(=O)[O-]'),# amino acid
+
                            ('C1=CN=CNC1=O', 'C1=CNC=NC1=O'), # pyrimodone
                            ('C1=CN=CNC1=O', 'C1=CN=CN=C1O'),# pyrimodol - pytimodone
                            ('C1=NC=NN1','N1C=NN=C1' ), #triazole
                            ('C1(=NC(=NC(=N1)O)O)O', 'C1(NC(NC(N1)=O)=O)=O'), # cyanic - cyanuric
                            ('CC(=O)S[H]', 'CC(=S)O[H]'),
-                           ('CC(=O)S[H]', 'CC(=O)[S-]'),
-                           ('CC(=O)S[H]', 'CC(=S)[O-]'),
                            ('C[N](=O)=O', 'C[N+]([O-])=O'),# nitromethane
                            ('CN=[N]#N', 'CN=[N+]=[N-]'),  # azide
                            ('C[S](C)(=O)=O', 'C[S++](C)([O-])[O-]'), # sulfone
@@ -655,11 +667,30 @@ def test_molecule_formula(backend, smiles, bench):
                            ('C1=CC=C(O1)O','C1=CCC(O1)=O' ), #furanol-furanone
                            ('C1=CC(=CO1)O', 'C1=CC(CO1)=O')#  furanol - furanone
                            ])
+@pytest.mark.parametrize('backend', [_test_unique_protomer, _test_unique_tautomer])
+def test_universal_id(backend, state1, state2):
+    backend(state1, state2)
 
+
+# only captured with openeye - unique protomer also included ionization states. rdkit only standardizes for tautomers.
 @using_openeye
-def test_unique_protomer(state1, state2):
-    """Test unique protomer"""
-    mol_1 = cmiles.utils.load_molecule(state1)
-    mol_2 = cmiles.utils.load_molecule(state2)
-    assert cmiles.get_unique_protomer(mol_1) == cmiles.get_unique_protomer(mol_2)
+@pytest.mark.parametrize("state1, state2",
+                         [('CC(=O)O','CC(=O)[O-]'), # protonation states
+                          ('NCC(=O)O', '[NH3+]CC(=O)[O-]'),# amino acid
+                          ('CC(=O)S[H]', 'CC(=O)[S-]'),
+                          ('CC(=O)S[H]', 'CC(=S)[O-]'),
+                         ])
+def test_unique_protomers(state1, state2):
+    _test_unique_protomer(state1, state2)
 
+# only captured with redkit. captures indoles. Neither openeye nor rdkit capture isoindoles
+@using_rdkit
+@pytest.mark.parametrize("state1, state2",
+                         [('CP(=O)(C)S', 'CP(=S)(C)O'), # mesomer
+                          ('CC(=[NH2+])N','C[C+](N)N'), # mesomer
+                          ('C=C=O', 'C#CO'), # keten-ynol
+                          ('c1ccc2c(c1)cc([nH]2)O', 'c1ccc2c(c1)CC(=O)N2'), # indole_ol - indole-one
+                          ('c1ccc2c(c1)cc([nH]2)N', 'c1ccc2c(c1)CC(=N2)N')# indole - indole
+                         ])
+def test_unique_tautomers(state1, state2):
+    _test_unique_tautomer(state1, state2)

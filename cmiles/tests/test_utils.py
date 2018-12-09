@@ -249,7 +249,8 @@ def test_explicit_h_rd():
 @pytest.mark.parametrize("smiles, output", [('CN(C)C(=N)NC(=N)N', True),
                                            ('COC1=CC(CN(C)C2=CC=C3N=C(N)N=C(N)C3=C2)=C(OC)C=C1', False),
                                            ('[H][C@](C)(O)[C@@]([H])(N=C(O)[C@]1([H])C[C@@]([H])(CCC)CN1C)[C@@]1([H])O[C@]([H])(SC)[C@]([H])(O)[C@@]([H])(O)[C@@]1([H])O',
-                                            False)])
+                                            False),
+                                            ('N=CO', True)])
 def test_chiral_bond_exception(smiles, output):
     """ Test bonds to ignore """
     mol = oechem.OEMol()

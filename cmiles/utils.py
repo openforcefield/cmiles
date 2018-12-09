@@ -430,23 +430,30 @@ def _has_stereo_defined_rd(molecule):
 
 
 def _ignore_stereo_flag_oe(molecule, bond):
+
     ignore = False
     beg = bond.GetBgn()
     end = bond.GetEnd()
 
     if (beg.GetAtomicNum() == 7) and (end.GetAtomicNum() == 6) and (bond.GetOrder() == 2):
-        for a in beg.GetAtoms():
+        for i, a in enumerate(beg.GetAtoms()):
             if a != end and a.GetAtomicNum() == 1:
                 # This is a C=NH bond and should be ignored when flagged
                 ignore = True
                 break
+        if i == 0 and beg.GetImplicitHCount() == 1:
+            # This is a C=NH bond with implicit H
+            ignore = True
 
     if (beg.GetAtomicNum() == 6) and (end.GetAtomicNum() == 7) and (bond.GetOrder() == 2):
-        for a in end.GetAtoms():
+        for i, a in enumerate(end.GetAtoms()):
             if a != beg and a.GetAtomicNum() == 1:
                 # This is a C=NH bond and should be ignored when flagged
                 ignore = True
                 break
+        if i == 0 and end.GetImplicitHCount() == 1:
+            # This is a C=NH bond with implicit H
+            ignore = True
     return ignore
 
 

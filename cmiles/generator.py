@@ -109,6 +109,8 @@ def to_molecule_id(molecule, canonicalization='openeye'):
                                                                                                explicit_hydrogen=True,
                                                                                                mapped=True)
         smiles['unique_protomer_representation'] = get_unique_protomer(molecule)
+        if HAS_RDKIT:
+            smiles['unique_tautomer_representation'] = standardize_tautomer(smiles['canonical_isomeric_smiles'])
         smiles['provenance'] = 'cmiles_' + cmiles.__version__ + '_openeye_' + oe.__version__
     elif canonicalization == 'rdkit':
         if not HAS_RDKIT:
@@ -125,6 +127,8 @@ def to_molecule_id(molecule, canonicalization='openeye'):
         smiles['canonical_isomeric_explicit_hydrogen_mapped_smiles'] = to_canonical_smiles_rd(molecule, isomeric=True,
                                                                                                explicit_hydrogen=True,
                                                                                                mapped=True)
+
+        smiles['unique_tautomer_representation'] = standardize_tautomer(smiles['canonical_isomeric_smiles'])
         if HAS_OPENEYE:
             smiles['unique_protomer_representation'] = get_unique_protomer(molecule)
         smiles['provenance'] = 'cmiles_' + cmiles.__version__ + '_rdkit_' + rd.__version__
@@ -378,6 +382,35 @@ def get_unique_protomer(molecule):
     if not oequacpac.OEQuacPacIsLicensed():
         raise ImportError("Must have OEQuacPac license!")
 
+    if HAS_RDKIT:
+        if isinstance(molecule, rd.Chem.rdchem.Mol):
+            # convert to openeye molecule
+            # Maybe we shouldn't do this.
+            smiles = rd.Chem.MolToSmiles(molecule)
+            molecule = oechem.OEMol()
+            oechem.OESmilesToMol(molecule, smiles)
+
     molecule_copy = deepcopy(molecule)
     oequacpac.OEGetUniqueProtomer(molecule_copy, molecule)
     return oechem.OEMolToSmiles(molecule_copy)
+
+
+def standardize_tautomer(iso_can_smi):
+    """
+    Standardize tautomer to one universal tautomer. Does not standardize for ionization states.
+    In some cases preforms better than oequacpac.OEGetUniqueProtomer. See examples/tautomers.ipynb
+    Parameters
+    ----------
+    iso_can_smi: str
+
+    Returns
+    -------
+    std_tautomer: str
+    """
+    if HAS_RDKIT:
+        from rdkit.Chem import MolStandardize
+    else:
+        raise ImportError("Must have rdkit installed to use this function")
+
+    std_tautomer = MolStandardize.canonicalize_tautomer_smiles(iso_can_smi)
+    return std_tautomer

@@ -227,6 +227,17 @@ def _mol_from_json_rd(symbols, connectivity, geometry):
 
     return molecule
 
+
+def to_map_ordered_qcschema(molecule, mapped_smiles):
+    # ToDo:
+    # Check molecule has coordinates
+    # Substructure search on mapped SMILES to get mapping
+    pass
+
+
+def reorder_qcschema(json_mol, mapped_smiles):
+    pass
+
 # ToDo: ordered geometry by map indices.
 # Inputs can be:
 #  1. qcschema and map smile
@@ -474,14 +485,16 @@ def has_explicit_hydrogen(molecule, backend='openeye'):
     """
     explicit = True
     if backend == 'openeye':
-        if isinstance(molecule, (Chem.rdchem.Mol, Chem.Mol)):
-            raise UserWarning("Use rdkit backend for rdkit Mol")
+        if has_rdkit:
+            if isinstance(molecule, (Chem.rdchem.Mol, Chem.Mol)):
+                raise UserWarning("Use rdkit backend for rdkit Mol")
         if oechem.OEHasImplicitHydrogens(molecule):
             # The molecule was generated from an implicit hydrogen SMILES
             explicit = False
     elif backend == 'rdkit':
-        if isinstance(molecule, (oechem.OEMol, oechem.OEMolBase, oechem.OEGraphMol)):
-            raise UserWarning("Use OpenEye backend for oemol")
+        if has_openeye:
+            if isinstance(molecule, (oechem.OEMol, oechem.OEMolBase, oechem.OEGraphMol)):
+                raise UserWarning("Use OpenEye backend for oemol")
         for a in molecule.GetAtoms():
             if a.GetImplicitValence() > 0:
                 explicit = False

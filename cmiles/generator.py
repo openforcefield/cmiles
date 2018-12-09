@@ -267,9 +267,9 @@ def to_canonical_smiles_oe(molecule, isomeric, explicit_hydrogen, mapped):
         JSON_geometry = False
 
     if isomeric:
-        oechem.OEPerceiveChiral(molecule)
-        oechem.OE3DToAtomStereo(molecule)
-        oechem.OE3DToBondStereo(molecule)
+        #oechem.OEPerceiveChiral(molecule)
+        #oechem.OE3DToAtomStereo(molecule)
+        #oechem.OE3DToBondStereo(molecule)
         if not cmiles.utils.has_stereo_defined(molecule, backend='openeye'):
             raise ValueError("Smiles must have stereochemistry defined.")
 

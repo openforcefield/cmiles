@@ -290,7 +290,7 @@ def test_drug_bank_rd(input, output):
 
 
 @using_openeye
-@pytest.mark.parametrize("input, output", get_smiles_lists(get_fn('drug_bank_stereo.smi'), get_fn('drug_bank_mapped_smi_oe_test.smi')))
+@pytest.mark.parametrize("input, output", get_smiles_lists(get_fn('drug_bank_stereo.smi'), get_fn('drug_bank_mapped_smi_oe.smi')))
 def test_drug_bank_oe(input, output):
     """
 
@@ -366,7 +366,7 @@ def _map_from_json(hooh, backend, map_smiles):
 @using_openeye
 @using_rdkit
 @pytest.mark.parametrize("backend, map_smiles", [('openeye', '[H:3][O:1][O:2][H:4]'),
-                                                 ('rdkit', '[H:1][O:3][O:4][H:2]')])
+                                                 ('rdkit', '[O:1]([O:2][H:4])[H:3]')])
 def test_map_order(backend, map_smiles):
     hooh = {
     'symbols': ['H', 'O', 'O', 'H'],
@@ -641,7 +641,7 @@ def test_molecule_formula(backend, smiles, bench):
                            ('C1(=NC(=NC(=N1)O)O)O', 'C1(NC(NC(N1)=O)=O)=O'), # cyanic - cyanuric
                            ('CC(=O)S[H]', 'CC(=S)O[H]'),
                            ('CC(=O)S[H]', 'CC(=O)[S-]'),
-                           ('CC(=O)S[H])', 'CC(=S)[O-]'),
+                           ('CC(=O)S[H]', 'CC(=S)[O-]'),
                            ('C[N](=O)=O', 'C[N+]([O-])=O'),# nitromethane
                            ('CN=[N]#N', 'CN=[N+]=[N-]'),  # azide
                            ('C[S](C)(=O)=O', 'C[S++](C)([O-])[O-]'), # sulfone

@@ -218,7 +218,7 @@ def test_explicit_h_oe():
     oechem.OESmilesToMol(mol, o)
     assert cmiles.utils.has_explicit_hydrogen(mol)
 
-
+@using_rdkit
 def test_explicit_h_rd():
     """Test input SMILES for explicit H"""
 

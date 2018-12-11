@@ -285,8 +285,8 @@ def get_atom_map_rd(molecule, mapped_smiles):
 
     """
     mapped_pattern = Chem.MolFromSmarts(mapped_smiles)
-    if molecule.HasSubstructureMatch(mapped_pattern):
-        idx_pattern_order = molecule.GetSubstructureMatch(mapped_pattern)
+    if molecule.HasSubstructMatch(mapped_pattern):
+        idx_pattern_order = molecule.GetSubstructMatch(mapped_pattern)
     else:
         raise RuntimeError("Substrucure match failed for {}, SMARTS: {}".format(Chem.MolToSmiles(molecule), mapped_smiles))
 

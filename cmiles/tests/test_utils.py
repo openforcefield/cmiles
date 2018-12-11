@@ -273,3 +273,34 @@ def test_chiral_bond_exception_rd(smiles, output):
         if ignore:
             break
     assert ignore == ignore
+
+
+def test_get_atom_map():
+    smiles = 'C[C@@H](c1c(ccc(c1Cl)F)Cl)OC'
+    mol = oechem.OEMol()
+    oechem.OESmilesToMol(mol, smiles)
+    oechem.OEAddExplicitHydrogens(mol)
+
+    for a in mol.GetAtoms():
+        a.SetMapIdx(a.GetIdx()+1)
+
+    mapped_smiles = oechem.OEMolToSmiles(mol)
+    atom_map = cmiles.utils.get_atom_map(mol, mapped_smiles)
+
+    for m in atom_map:
+        assert m == (atom_map[m] + 1)
+
+
+def test_get_atom_map_rd():
+    smiles = 'C[C@@H](c1c(ccc(c1Cl)F)Cl)OC'
+    mol = Chem.MolFromSmiles(smiles)
+    mol = Chem.AddHs(mol)
+
+    for a in mol.GetAtoms():
+        a.SetAtomMapNum(a.GetIdx()+1)
+
+    mapped_smiles = Chem.MolToSmiles(mol)
+    atom_map = cmiles.utils.get_atom_map_rd(mol, mapped_smiles)
+
+    for m in atom_map:
+        assert m == (atom_map[m] + 1)

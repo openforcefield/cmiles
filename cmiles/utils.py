@@ -4,6 +4,7 @@ Utility functions for cmiles generator
 import copy
 import numpy as np
 import warnings
+import time
 
 try:
     from rdkit import Chem
@@ -233,6 +234,66 @@ def to_map_ordered_qcschema(molecule, mapped_smiles):
     # Check molecule has coordinates
     # Substructure search on mapped SMILES to get mapping
     pass
+
+
+def get_atom_map(molecule, mapped_smiles):
+    """
+    Map tag in mapped SMILES to atom idx
+
+    Parameters
+    ----------
+    molecule
+    mapped_smiles
+
+    Returns
+    -------
+
+    """
+    ss = oechem.OESubSearch(mapped_smiles)
+    oechem.OEPrepareSearch(molecule, ss)
+    ss.SetMaxMatches(1)
+
+    atom_map = {}
+    t1 = time.time()
+    matches = [m for m in ss.Match(molecule)]
+    t2 = time.time()
+    seconds = t2-t1
+    print("CSS took {} seconds".format(seconds))
+    if not matches:
+        raise RuntimeError("MCSS failed for {}, smiles: {}".format(oechem.OEMolToSmiles(molecule), mapped_smiles))
+    for match in matches:
+        for ma in match.GetAtoms():
+            atom_map[ma.pattern.GetMapIdx()] = ma.target.GetIdx()
+
+    # sanity check
+    mol = oechem.OEGraphMol()
+    oechem.OESubsetMol(mol, match, True)
+    print("Match SMILES: {}".format(oechem.OEMolToSmiles(mol)))
+    return atom_map
+
+
+def get_atom_map_rd(molecule, mapped_smiles):
+    """
+
+    Parameters
+    ----------
+    molecule
+    mapped_smiles
+
+    Returns
+    -------
+
+    """
+    mapped_pattern = Chem.MolFromSmarts(mapped_smiles)
+    if molecule.HasSubstructureMatch(mapped_pattern):
+        idx_pattern_order = molecule.GetSubstructureMatch(mapped_pattern)
+    else:
+        raise RuntimeError("Substrucure match failed for {}, SMARTS: {}".format(Chem.MolToSmiles(molecule), mapped_smiles))
+
+    atom_map = {}
+    for i, j in enumerate(idx_pattern_order):
+        atom_map[mapped_pattern.GetAtomWithIdx(i).GetAtomMapNum()] = j
+    return atom_map
 
 
 def reorder_qcschema(json_mol, mapped_smiles):

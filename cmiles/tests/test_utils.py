@@ -18,8 +18,6 @@ try:
 except ImportError:
     openeye_missing = True
 
-from .utils import get_fn
-
 using_rdkit = pytest.mark.skipif(rdkit_missing, reason="Cannot run without RDKit")
 using_openeye = pytest.mark.skipif(openeye_missing, reason="Cannot run without OpenEye")
 
@@ -293,7 +291,7 @@ def test_chiral_bond_exception_rd(smiles, output):
             break
     assert ignore == ignore
 
-
+@using_openeye
 def test_get_atom_map():
     smiles = 'C[C@@H](c1c(ccc(c1Cl)F)Cl)OC'
     mol = oechem.OEMol()
@@ -309,7 +307,7 @@ def test_get_atom_map():
     for m in atom_map:
         assert m == (atom_map[m] + 1)
 
-
+@using_rdkit
 def test_get_atom_map_rd():
     smiles = 'C[C@@H](c1c(ccc(c1Cl)F)Cl)OC'
     mol = Chem.MolFromSmiles(smiles)

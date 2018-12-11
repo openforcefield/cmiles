@@ -5,6 +5,7 @@ import copy
 import numpy as np
 import warnings
 import time
+from cmiles.generator import to_molecule_id
 
 try:
     from rdkit import Chem
@@ -229,11 +230,54 @@ def _mol_from_json_rd(symbols, connectivity, geometry):
     return molecule
 
 
-def to_map_ordered_qcschema(molecule, mapped_smiles, backend='openeye'):
+def to_map_ordered_qcschema(molecule, molecule_ids):
     # ToDo:
     # Check molecule has coordinates
     # Substructure search on mapped SMILES to get mapping
-    pass
+    mapped_smiles = molecule_ids['canonical_isomeric_explicit_hydrogen_mapped_smiles']
+    if has_openeye:
+        if isinstance(molecule, (oechem.OEMol, oechem.OEMolBase, oechem.OEGraphMol)):
+            backend = 'openeye'
+    elif has_rdkit:
+        if isinstance(molecule, Chem.Mol):
+            backend = 'rdkit'
+    else:
+        raise RuntimeError("Input molecule must be either oechem.Mol or rdkit.Chem.Mol")
+
+    if backend == 'openeye':
+        qcschema_mol = _to_map_ordered_qcschema(molecule, mapped_smiles)
+    if backend == 'rdkit':
+        qcschema_mol = _to_map_ordered_qcschema(molecule, mapped_smiles)
+
+    qcschema_mol['identifiers'] = molecule_ids
+
+    return qcschema_mol
+
+
+def _to_map_ordered_qcschema(molecule, mapped_smiles):
+
+    if not molecule.GetDimension() == 3:
+        raise RuntimeError("Molecule must have 3D coordinates for generating a QCSchema molecule")
+
+    if molecule.GetMaxConfIdx() != 1:
+        raise Warning("The molecule must have at least and at most 1 conformation")
+
+    atom_map = get_atom_map(molecule, mapped_smiles)
+    charge = get_charge(molecule)
+    connectivity = get_connectivity(molecule, atom_map, backend='openeye')
+
+    symbols = []
+    geometry = []
+    for mapping in range(1, molecule.NumAtoms()+1):
+        idx = atom_map[mapping]
+        atom = molecule.GetAtom(oechem.OEHasAtomIdx(idx))
+        syb = oechem.OEGetAtomicSymbol(atom.GetAtomicNum())
+        symbols.append(syb)
+        for i in range(3):
+            geometry.append(molecule.GetCoords()[atom.GetIdx()][i]*ANGSROM_2_BOHR)
+
+    qcschema = {'symbols': symbols, 'geometry': geometry, 'molecular_charge': charge,
+                'molecular_multiplicity': multiplicity, 'connectivity': connectivity}
 
 
 def get_atom_map(molecule, mapped_smiles):
@@ -294,6 +338,23 @@ def get_atom_map_rd(molecule, mapped_smiles):
     for i, j in enumerate(idx_pattern_order):
         atom_map[mapped_pattern.GetAtomWithIdx(i).GetAtomMapNum()] = j
     return atom_map
+
+
+def get_connectivity(molecule, atom_map, backend='openeye'):
+
+    inv_map = dict(zip(atom_map.values(), atom_map.keys()))
+
+    if backend == 'openeye':
+        connectivity_table = [[inv_map[bond.GetBgnIdx()]-1, inv_map[bond.GetEndIdx()]-1, bond.GetOrder()]
+                              for bond in molecule.GetBonds()]
+    elif backend == 'rdkit':
+        # ToDo - how to treat aromatic bonds
+        connectivity_table = [[inv_map[bond.GetBeginAtomIdx()]-1, inv_map[bond.GetEndAtomIdx()]-1, bond.GetBondTypeAsDouble()]
+                              for bond in molecule.GetBonds()]
+    else:
+        raise RuntimeError("Only openeye and rdkit are supported")
+
+    return connectivity_table
 
 
 def reorder_qcschema(json_mol, mapped_smiles):
@@ -358,6 +419,7 @@ def remove_map(molecule):
 
 def has_stereo_defined(molecule, backend='openeye'):
     """
+    ToDo check for incorrect steroe (OEMDLHasIncorrectBondStereo)
 
     Parameters
     ----------
@@ -660,3 +722,11 @@ def canonical_order_atoms_rd(molecule, h_last=True):
             else:
                 atom.SetAtomMapNum(map_idx + heavy_atoms)
     return molecule
+
+
+def get_charge(molecule):
+
+    charge = 0
+    for atom in molecule.GetAtoms():
+        charge += atom.GetFormalCharge()
+    return charge

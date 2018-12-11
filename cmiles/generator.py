@@ -20,7 +20,7 @@ except ImportError:
     HAS_RDKIT = False
 
 
-def to_molecule_id(molecule, canonicalization='openeye'):
+def to_molecule_id(molecule, canonicalization='openeye', strict=True):
     """
     Generate a dictionary of canonical SMILES.
 
@@ -70,6 +70,8 @@ def to_molecule_id(molecule, canonicalization='openeye'):
         The canonicalization backend to use for generating SMILES. Choice of 'openeye' or 'rdkit'.
         The canonicalization algorithms are different so the output will be different.
         The mapping will also be different.
+    strict: bool, optional. Default True
+        If true, will raise an exception if SMILES is missing explicit H.
 
     Returns
     -------
@@ -85,9 +87,8 @@ def to_molecule_id(molecule, canonicalization='openeye'):
     if cmiles.utils.is_mapped(molecule):
         cmiles.utils.remove_map(molecule)
     # check for explicit hydrogen
-    if not cmiles.utils.has_explicit_hydrogen(molecule, backend=canonicalization):
-        warnings.warn("Input molecule is missing explicit hydrogen. In some cases this can lead to hydrogen placement "
-                      "that are different than you intended")
+    if strict and not cmiles.utils.has_explicit_hydrogen(molecule, backend=canonicalization):
+        raise RuntimeError("Input molecule is missing explicit hydrogen")
 
     # check for fully defined stereochemistry
 

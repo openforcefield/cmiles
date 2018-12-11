@@ -111,7 +111,7 @@ def test_has_stereochemistry_oe(input1, input2):
     mol = oechem.OEMol()
     oechem.OESmilesToMol(mol, input1)
     oechem.OEAddExplicitHydrogens(mol)
-    assert cmiles.utils.has_stereo_defined(mol, backend='openeye')
+    assert cmiles.utils.has_stereo_defined(mol, backend='openeye') == True
 
     mol = oechem.OEMol()
     oechem.OESmilesToMol(mol, input2)
@@ -129,7 +129,7 @@ def test_has_stereochemistry_oe(input1, input2):
 def test_has_stereochemistry_rd(input1, input2):
     mol = Chem.MolFromSmiles(input1)
     mol = Chem.AddHs(mol)
-    assert cmiles.utils.has_stereo_defined(mol, backend='rdkit')
+    assert cmiles.utils.has_stereo_defined(mol, backend='rdkit') == True
 
     mol = Chem.MolFromSmiles(input2)
     mol = Chem.AddHs(mol)
@@ -258,6 +258,25 @@ def test_chiral_bond_exception(smiles):
     mol = Chem.MolFromSmiles(smiles)
     mol = Chem.AddHs(mol)
     assert cmiles.utils.has_stereo_defined(mol, backend='rdkit') == True
+
+@using_openeye
+@pytest.mark.parametrize("smiles, output", [('CN(C)C(=N)NC(=N)N', True),
+                                           ('COC1=CC(CN(C)C2=CC=C3N=C(N)N=C(N)C3=C2)=C(OC)C=C1', False),
+                                           ('[H][C@](C)(O)[C@@]([H])(N=C(O)[C@]1([H])C[C@@]([H])(CCC)CN1C)[C@@]1([H])O[C@]([H])(SC)[C@]([H])(O)[C@@]([H])(O)[C@@]1([H])O',
+                                            False),
+                                            ('N=CO', True)])
+def test_chiral_bond_exception_oe(smiles, output):
+    """ Test bonds to ignore """
+    mol = oechem.OEMol()
+    oechem.OESmilesToMol(mol, smiles)
+    oechem.OEAddExplicitHydrogens(mol)
+    ignore = False
+    for bond in mol.GetBonds():
+        ignore = cmiles.utils._ignore_stereo_flag_oe(bond)
+        if ignore:
+            break
+    assert ignore == output
+
 
 @using_rdkit
 @pytest.mark.parametrize("smiles, output", [('CN(C)C(=N)NC(=N)N', True),

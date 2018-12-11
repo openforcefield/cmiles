@@ -421,8 +421,8 @@ def _has_stereo_defined_oe(molecule):
                 unspec_chiral = True
                 problematic_atoms.append((atom.GetIdx(), oechem.OEGetAtomicSymbol(atom.GetAtomicNum())))
     for bond in molecule.GetBonds():
-        if bond.GetBgn().GetHvyDegree() >= 3 and bond.GetEnd().GetHvyDegree() >= 3:
-            if bond.IsChiral() and not bond.HasStereoSpecified(oechem.OEBondStereo_CisTrans):
+        if bond.IsChiral() and not bond.HasStereoSpecified(oechem.OEBondStereo_CisTrans):
+            if not _ignore_stereo_flag_oe(bond):
                 v = []
                 for neigh in bond.GetBgn().GetAtoms():
                     if neigh != bond.GetEnd():
@@ -444,12 +444,40 @@ def _has_stereo_defined_oe(molecule):
                     a2_s = oechem.OEGetAtomicSymbol(a2.GetAtomicNum())
                     bond_order = bond.GetOrder()
                     problematic_bonds.append((a1_idx, a1_s, a2_idx, a2_s, bond_order))
-        if unspec_chiral or unspec_db:
-            raise ValueError("Stereochemistry is unspecified. Problematic atoms {}, problematic bonds {}".format(
-                    problematic_atoms,
-                    problematic_bonds))
-        else:
-            return True
+    if unspec_chiral or unspec_db:
+        raise ValueError("Stereochemistry is unspecified. Problematic atoms {}, problematic bonds {}".format(
+                problematic_atoms,
+                problematic_bonds))
+    else:
+        return True
+
+
+def _ignore_stereo_flag_oe(bond):
+
+    ignore = False
+    beg = bond.GetBgn()
+    end = bond.GetEnd()
+
+    if (beg.GetAtomicNum() == 7) and (end.GetAtomicNum() == 6) and (bond.GetOrder() == 2):
+        for i, a in enumerate(beg.GetAtoms()):
+            if a != end and a.GetAtomicNum() == 1:
+                # This is a C=NH bond and should be ignored when flagged
+                ignore = True
+                break
+        if i == 0 and beg.GetImplicitHCount() == 1:
+            # This is a C=NH bond with implicit H
+            ignore = True
+
+    if (beg.GetAtomicNum() == 6) and (end.GetAtomicNum() == 7) and (bond.GetOrder() == 2):
+        for i, a in enumerate(end.GetAtoms()):
+            if a != beg and a.GetAtomicNum() == 1:
+                # This is a C=NH bond and should be ignored when flagged
+                ignore = True
+                break
+        if i == 0 and end.GetImplicitHCount() == 1:
+            # This is a C=NH bond with implicit H
+            ignore = True
+    return ignore
 
 
 def _has_stereo_defined_rd(molecule):

@@ -230,59 +230,35 @@ def _mol_from_json_rd(symbols, connectivity, geometry):
     return molecule
 
 
-def to_map_ordered_qcschema(molecule, molecule_ids):
-    # ToDo:
-    # Check molecule has coordinates
-    # Substructure search on mapped SMILES to get mapping
+def to_map_ordered_qcschema(molecule, molecule_ids, multiplicity=1):
+    """
+
+    Parameters
+    ----------
+    molecule
+    molecule_ids
+    multiplicity
+
+    Returns
+    -------
+
+    """
+    toolkit = _set_toolkit(molecule)
     mapped_smiles = molecule_ids['canonical_isomeric_explicit_hydrogen_mapped_smiles']
-    if has_openeye:
-        if isinstance(molecule, (oechem.OEMol, oechem.OEMolBase, oechem.OEGraphMol)):
-            backend = 'openeye'
-    elif has_rdkit:
-        if isinstance(molecule, Chem.Mol):
-            backend = 'rdkit'
-    else:
-        raise RuntimeError("Input molecule must be either oechem.Mol or rdkit.Chem.Mol")
+    atom_map = toolkit.get_atom_map(molecule, mapped_smiles)
 
-    if backend == 'openeye':
-        qcschema_mol = _to_map_ordered_qcschema(molecule, mapped_smiles)
-    if backend == 'rdkit':
-        qcschema_mol = _to_map_ordered_qcschema(molecule, mapped_smiles)
+    connectivity = get_connectivity_table(molecule, atom_map)
+    symbols, geometry = toolkit.get_map_ordered_geometry(molecule, atom_map)
+    charge = get_charge(molecule)
 
-    qcschema_mol['identifiers'] = molecule_ids
+    qcschema_mol = {'symbols':symbols, 'geometry':geometry, 'connectitity_table': connectivity,
+                    'molecular_charge': charge, 'molecular_multiplicity': multiplicity, 'identifiers': molecule_ids}
 
     return qcschema_mol
 
 
-def _to_map_ordered_qcschema(molecule, mapped_smiles):
-
-    if not molecule.GetDimension() == 3:
-        raise RuntimeError("Molecule must have 3D coordinates for generating a QCSchema molecule")
-
-    if molecule.GetMaxConfIdx() != 1:
-        raise Warning("The molecule must have at least and at most 1 conformation")
-
-    atom_map = get_atom_map(molecule, mapped_smiles)
-    charge = get_charge(molecule)
-    connectivity = get_connectivity(molecule, atom_map, backend='openeye')
-
-    symbols = []
-    geometry = []
-    for mapping in range(1, molecule.NumAtoms()+1):
-        idx = atom_map[mapping]
-        atom = molecule.GetAtom(oechem.OEHasAtomIdx(idx))
-        syb = oechem.OEGetAtomicSymbol(atom.GetAtomicNum())
-        symbols.append(syb)
-        for i in range(3):
-            geometry.append(molecule.GetCoords()[atom.GetIdx()][i]*ANGSROM_2_BOHR)
-
-    qcschema = {'symbols': symbols, 'geometry': geometry, 'molecular_charge': charge,
-                'molecular_multiplicity': multiplicity, 'connectivity': connectivity}
-
-
 def get_atom_map(molecule, mapped_smiles):
     """
-    Map tag in mapped SMILES to atom idx
 
     Parameters
     ----------
@@ -293,68 +269,29 @@ def get_atom_map(molecule, mapped_smiles):
     -------
 
     """
-    ss = oechem.OESubSearch(mapped_smiles)
-    oechem.OEPrepareSearch(molecule, ss)
-    ss.SetMaxMatches(1)
-
-    atom_map = {}
-    t1 = time.time()
-    matches = [m for m in ss.Match(molecule)]
-    t2 = time.time()
-    seconds = t2-t1
-    print("CSS took {} seconds".format(seconds))
-    if not matches:
-        raise RuntimeError("MCSS failed for {}, smiles: {}".format(oechem.OEMolToSmiles(molecule), mapped_smiles))
-    for match in matches:
-        for ma in match.GetAtoms():
-            atom_map[ma.pattern.GetMapIdx()] = ma.target.GetIdx()
-
-    # sanity check
-    mol = oechem.OEGraphMol()
-    oechem.OESubsetMol(mol, match, True)
-    print("Match SMILES: {}".format(oechem.OEMolToSmiles(mol)))
+    toolkit = _set_toolkit(molecule)
+    atom_map = toolkit.get_atom_map(molecule, mapped_smiles)
     return atom_map
 
 
-def get_atom_map_rd(molecule, mapped_smiles):
+def get_connectivity_table(molecule, atom_map, set_aromitcity_model=True):
     """
 
     Parameters
     ----------
     molecule
-    mapped_smiles
+    atom_map
 
     Returns
     -------
 
     """
-    mapped_pattern = Chem.MolFromSmarts(mapped_smiles)
-    if molecule.HasSubstructMatch(mapped_pattern):
-        idx_pattern_order = molecule.GetSubstructMatch(mapped_pattern)
-    else:
-        raise RuntimeError("Substrucure match failed for {}, SMARTS: {}".format(Chem.MolToSmiles(molecule), mapped_smiles))
 
-    atom_map = {}
-    for i, j in enumerate(idx_pattern_order):
-        atom_map[mapped_pattern.GetAtomWithIdx(i).GetAtomMapNum()] = j
-    return atom_map
-
-
-def get_connectivity(molecule, atom_map, backend='openeye'):
-
-    inv_map = dict(zip(atom_map.values(), atom_map.keys()))
-
-    if backend == 'openeye':
-        connectivity_table = [[inv_map[bond.GetBgnIdx()]-1, inv_map[bond.GetEndIdx()]-1, bond.GetOrder()]
-                              for bond in molecule.GetBonds()]
-    elif backend == 'rdkit':
-        # ToDo - how to treat aromatic bonds
-        connectivity_table = [[inv_map[bond.GetBeginAtomIdx()]-1, inv_map[bond.GetEndAtomIdx()]-1, bond.GetBondTypeAsDouble()]
-                              for bond in molecule.GetBonds()]
-    else:
-        raise RuntimeError("Only openeye and rdkit are supported")
-
-    return connectivity_table
+    toolkit = _set_toolkit(molecule)
+    if set_aromitcity_model:
+        set_aromaticity_mdl(molecule)
+    inverse_map = dict(zip(atom_map.values(), atom_map.keys()))
+    return toolkit.get_connectivity_table(molecule, inverse_map)
 
 
 def reorder_qcschema(json_mol, mapped_smiles):
@@ -601,7 +538,7 @@ def _ignore_stereo_flag_rd(bond):
     return ignore
 
 
-def has_explicit_hydrogen(molecule, backend='openeye'):
+def has_explicit_hydrogen(molecule):
     """
     Check if molecule has explicit hydrogen. In OpenEye, molecules created from explicit hydrogen SMILES will have
     explicit hydrogen.
@@ -613,25 +550,8 @@ def has_explicit_hydrogen(molecule, backend='openeye'):
     -------
 
     """
-    explicit = True
-    if backend == 'openeye':
-        if has_rdkit:
-            if isinstance(molecule, (Chem.rdchem.Mol, Chem.Mol)):
-                raise UserWarning("Use rdkit backend for rdkit Mol")
-        if oechem.OEHasImplicitHydrogens(molecule):
-            # The molecule was generated from an implicit hydrogen SMILES
-            explicit = False
-    elif backend == 'rdkit':
-        if has_openeye:
-            if isinstance(molecule, (oechem.OEMol, oechem.OEMolBase, oechem.OEGraphMol)):
-                raise UserWarning("Use OpenEye backend for oemol")
-        for a in molecule.GetAtoms():
-            if a.GetImplicitValence() > 0:
-                explicit = False
-    else:
-        raise RuntimeError("Must have either RDKit or Openeye installed")
-
-    return explicit
+    toolkit = _set_toolkit(molecule)
+    return toolkit.has_explicit_hydrogen(molecule)
 
 
 def canonical_order_atoms_oe(molecule, in_place=True):
@@ -730,3 +650,28 @@ def get_charge(molecule):
     for atom in molecule.GetAtoms():
         charge += atom.GetFormalCharge()
     return charge
+
+
+def set_aromaticity_mdl(molecule):
+    """
+    Set aromaticity model to MDL to be consistent with OFF molecules. The model is set inplace.
+
+    Parameters
+    ----------
+    molecule: OEMol or rdmol.Mol molecule
+    """
+
+    toolkit = _set_toolkit(molecule)
+
+    toolkit.set_aromaticity_mdl(molecule)
+
+
+def _set_toolkit(molecule):
+
+    if has_openeye and isinstance(molecule, (oechem.OEMol, oechem.OEMol, oechem.OEGraphMol)):
+        import cmiles._cmiles_oe as toolkit
+    elif has_rdkit and isinstance(molecule, Chem.rdchem.Mol):
+        import cmiles._cmiles_rd as toolkit
+    else:
+        raise RuntimeError("Must have openeye or rdkit installed")
+    return toolkit

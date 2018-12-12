@@ -1,10 +1,16 @@
 """Test util functions"""
 
-import cmiles
+from cmiles import utils
 import pytest
-from pkg_resources import resource_filename
-import os
-import warnings
+import numpy as np
+
+mol_tool_kits = list()
+if utils.has_rdkit:
+    from cmiles import _cmiles_rd
+    mol_tool_kits.append('rdkit')
+if utils.has_openeye:
+    from cmiles import _cmiles_oe
+    mol_tool_kits.append('openeye')
 
 rdkit_missing = False
 try:
@@ -196,15 +202,15 @@ def test_explicit_h_oe():
 
     mol = oechem.OEMol()
     oechem.OESmilesToMol(mol, implicit_h)
-    assert cmiles.utils.has_explicit_hydrogen(mol) == False
+    assert utils.has_explicit_hydrogen(mol) == False
 
     mol = oechem.OEMol()
     oechem.OESmilesToMol(mol, some_explicit_h)
-    cmiles.utils.has_explicit_hydrogen(mol) == False
+    utils.has_explicit_hydrogen(mol) == False
 
     mol = oechem.OEMol()
     oechem.OESmilesToMol(mol, explicit_h)
-    assert cmiles.utils.has_explicit_hydrogen(mol)
+    assert utils.has_explicit_hydrogen(mol)
 
     mol = oechem.OEMol()
     oechem.OESmilesToMol(mol, mapped)
@@ -214,7 +220,7 @@ def test_explicit_h_oe():
     o = 'O=O'
     mol = oechem.OEMol()
     oechem.OESmilesToMol(mol, o)
-    assert cmiles.utils.has_explicit_hydrogen(mol)
+    assert utils.has_explicit_hydrogen(mol)
 
 @using_rdkit
 def test_explicit_h_rd():
@@ -226,16 +232,16 @@ def test_explicit_h_rd():
     mapped = '[C:1]([O:2][H:6])([H:3])([H:4])[H:5]'
 
     mol = Chem.MolFromSmiles(implicit_h)
-    assert cmiles.utils.has_explicit_hydrogen(mol, backend='rdkit') == False
+    assert utils.has_explicit_hydrogen(mol, backend='rdkit') == False
 
     mol = Chem.MolFromSmiles(some_explicit_h)
-    cmiles.utils.has_explicit_hydrogen(mol, backend='rdkit') == False
+    utils.has_explicit_hydrogen(mol, backend='rdkit') == False
 
     mol = Chem.MolFromSmiles(explicit_h)
-    assert cmiles.utils.has_explicit_hydrogen(mol, backend='rdkit')
+    assert utils.has_explicit_hydrogen(mol, backend='rdkit')
 
     mol = Chem.MolFromSmiles(mapped)
-    assert cmiles.utils.has_explicit_hydrogen(mol, backend='rdkit')
+    assert utils.has_explicit_hydrogen(mol, backend='rdkit')
 
     # no need for H
     o = 'O=O'
@@ -317,7 +323,38 @@ def test_get_atom_map_rd():
         a.SetAtomMapNum(a.GetIdx()+1)
 
     mapped_smiles = Chem.MolToSmiles(mol)
-    atom_map = cmiles.utils.get_atom_map_rd(mol, mapped_smiles)
+    atom_map = utils.get_atom_map_rd(mol, mapped_smiles)
 
     for m in atom_map:
         assert m == (atom_map[m] + 1)
+
+@pytest.mark.parametrize('mapped_smiles, expected_table', [('[H:5][C:1]([H:6])([H:7])[C:3]([H:11])([H:12])[C:4]([H:13])([H:14])[C:2]([H:8])([H:9])[H:10]',
+                                                          np.array([[0, 2, 1], [1, 3, 1],[2, 3, 1],[0, 4, 1],[0, 5, 1],
+                                                                    [0, 6, 1],[1, 7, 1],[1, 8, 1],[1, 9, 1],[2, 10, 1],
+                                                                    [2, 11, 1],[3, 12, 1],[3, 13, 1]])),
+                                                           ('[H:14][c:1]1[c:2]([c:5]([c:3]([c:6]([c:4]1[F:11])[Cl:13])[C@:9]([H:22])([C:7]([H:16])([H:17])[H:18])[O:10][C:8]([H:19])([H:20])[H:21])[Cl:12])[H:15]',
+                                                           np.array([[6, 8, 1.0],[8, 2, 1.0],[2, 4, 1.5],[4, 1, 1.5],
+                                                                     [1, 0, 1.5],[0, 3, 1.5],[3, 5, 1.5],[5, 12, 1.0],
+                                                                     [3, 10, 1.0],[4, 11, 1.0],[8, 9, 1.0],[9, 7, 1.0],
+                                                                     [5, 2, 1.5],[6, 15, 1.0],[6, 16, 1.0],[6, 17, 1.0],
+                                                                     [8, 21, 1.0],[1, 14, 1.0],[0, 13, 1.0],[7, 18, 1.0],
+                                                                     [7, 19, 1.0],[7, 20, 1.0]]))])
+@pytest.mark.parametrize('toolkit', mol_tool_kits)
+def test_connectivity(mapped_smiles, expected_table, toolkit):
+    """Test connectivity table"""
+    molecule = utils.load_molecule(mapped_smiles, backend=toolkit)
+    atom_map = utils.get_atom_map(molecule, mapped_smiles)
+    connectivity_table = utils.get_connectivity_table(molecule, atom_map)
+
+    for bond in connectivity_table:
+        xi = np.isin(expected_table, bond[:2])
+        match = np.where(np.array([i[:2].sum() for i in xi]) == 2)[0]
+        # assert that a match was found and only one was found
+        assert len(match) == 1
+        # assert that bond order is the same
+        assert expected_table[match][0][-1] == bond[-1]
+
+
+def test_map_order_geometry():
+    """Test map ordered geometry"""
+    pass

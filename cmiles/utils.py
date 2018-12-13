@@ -201,7 +201,7 @@ def mol_to_map_ordered_qcschema(molecule, molecule_ids, multiplicity=1):
     symbols, geometry = toolkit.get_map_ordered_geometry(molecule, atom_map)
     charge = get_charge(molecule)
 
-    qcschema_mol = {'symbols':symbols, 'geometry':geometry, 'connectitity_table': connectivity,
+    qcschema_mol = {'symbols': symbols, 'geometry': geometry, 'connectivity_table': connectivity,
                     'molecular_charge': charge, 'molecular_multiplicity': multiplicity, 'identifiers': molecule_ids}
 
     return qcschema_mol
@@ -242,7 +242,7 @@ def get_connectivity_table(molecule, atom_map):
     return toolkit.get_connectivity_table(molecule, inverse_map)
 
 
-def permute_qcschema(json_mol, molecule_ids, toolkit='openeye'):
+def permute_qcschema(json_mol, molecule_ids, **kwargs):
     """
 
     Parameters
@@ -254,7 +254,7 @@ def permute_qcschema(json_mol, molecule_ids, toolkit='openeye'):
     -------
 
     """
-    molecule = mol_from_json(json_mol, toolkit=toolkit)
+    molecule = mol_from_json(json_mol, **kwargs)
     ordered_qcschema = mol_to_map_ordered_qcschema(molecule, molecule_ids, json_mol['molecular_multiplicity'])
 
     return ordered_qcschema

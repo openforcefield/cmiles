@@ -297,8 +297,8 @@ def test_map_order_geometry(permute, toolkit, toolkit_name):
         assert hooh['geometry'] == pytest.approx(geometry, 0.0000001)
 
 
-@pytest.mark.parametrize('toolkit, toolkit_name', list(zip(toolkits, toolkits_name)))
-def test_permute_json(toolkit, toolkit_name):
+@pytest.mark.parametrize('toolkit', toolkits_name)
+def test_permute_json(toolkit):
     """Test permute json xyz, symbols and connectivity to match mapped smiles"""
     molecule_ids = {'canonical_smiles': 'OO',
                     'canonical_isomeric_smiles': 'OO',
@@ -323,9 +323,9 @@ def test_permute_json(toolkit, toolkit_name):
         'connectivity': [[0, 1, 1], [1, 2, 1], [2, 3, 1]],
         'molecular_multiplicity': 1
     }
-    mol = utils.mol_from_json(hooh, toolkit=toolkit_name)
+    mol = utils.mol_from_json(hooh, toolkit=toolkit)
     atom_map = utils.get_atom_map(mol, '[H:3][O:1][O:2][H:4]')
-    permuted_hooh = utils.permute_qcschema(hooh, molecule_ids)
+    permuted_hooh = utils.permute_qcschema(hooh, molecule_ids, toolkit=toolkit)
 
     json_geom = np.asarray(hooh['geometry']).reshape(int(len(hooh['geometry'])/3), 3)
     permuted_geom = np.asarray(permuted_hooh['geometry']).reshape(int(len(hooh['geometry'])/3), 3)

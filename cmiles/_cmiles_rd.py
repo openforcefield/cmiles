@@ -1,6 +1,7 @@
 """
 
 """
+import rdkit as toolkit
 from rdkit import Chem
 from .utils import _symbols, ANGSROM_2_BOHR
 
@@ -104,6 +105,57 @@ def canonical_order_atoms(molecule, h_last=True):
     return molecule
 
 
+def mol_to_smiles(molecule, isomeric=True, explicit_hydrogen=True, mapped=True):
+    """
+    Generate canonical SMILES with RDKit
+
+    Parameters
+    ----------
+    molecule: RDKit Chem.rdchem.Mol instance
+        The molecule to generate SMILES for
+    isomeric: bool
+        If True, SMILES will have isomeric information. If molecule already has isomeric information, this will be retained.
+        If no isomeric information exists, this function will perceive it and assign the CW (clockwise) flag for chiral
+        centers and the E-isomer for stereo bonds.
+    explicit_hydrogen: bool
+        If True, SMILES will have explicit hydrogens
+    mapped: bool
+        If True, SMILES will have map indices. (+1 because the map is 1 indexed)
+
+    Returns
+    -------
+    smiles: str
+        The canonical SMILES
+
+    """
+
+    if explicit_hydrogen:
+        # Add explicit hydrogens
+        molecule = Chem.AddHs(molecule)
+    if not explicit_hydrogen:
+        molecule = Chem.RemoveHs(molecule)
+
+    try:
+        json_geometry = int(molecule.GetProp("_json_geometry"))
+    except KeyError:
+        json_geometry = False
+
+    if isomeric and not has_stereo_defined(molecule):
+        raise ValueError("Some stereochemistry is not defined")
+
+    # Get canonical order for map
+    if mapped:
+        if json_geometry:
+            # keep original ordering
+            for i in range(molecule.GetNumAtoms()):
+                molecule.GetAtomWithIdx(i).SetAtomMapNum(i+1)
+        else:
+            molecule = canonical_order_atoms(molecule)
+
+    smiles = Chem.MolToSmiles(molecule, allHsExplicit=explicit_hydrogen, isomericSmiles=isomeric, canonical=True)
+    return smiles
+
+
 def get_connectivity_table(molecule, inverse_map):
     """
 
@@ -197,6 +249,15 @@ def has_explicit_hydrogen(molecule):
             explicit = False
 
     return explicit
+
+
+def add_explicit_hydrogen(molecule):
+    molecule = Chem.AddHs(molecule)
+    return molecule
+
+
+def get_symbols(molecule):
+    return [a.GetSymbol() for a in molecule.GetAtoms()]
 
 
 def has_stereo_defined(molecule):

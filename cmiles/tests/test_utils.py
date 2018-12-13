@@ -283,12 +283,7 @@ def test_map_order_geometry(permute, toolkit, toolkit_name):
         'connectivity': [[0, 1, 1], [1, 2, 1], [2, 3, 1]],
     }
     mol = utils.load_molecule(hooh, toolkit=toolkit_name, permute_xyz=permute)
-    import cmiles
-    if toolkit_name == 'openeye':
-        mapped_smiles = cmiles.to_canonical_smiles_oe(mol, isomeric=True, explicit_hydrogen=True, mapped=True)
-    if toolkit_name == 'rdkit':
-        mapped_smiles = cmiles.to_canonical_smiles_rd(mol, isomeric=True, explicit_hydrogen=True, mapped=True)
-
+    mapped_smiles = utils.mol_to_smiles(mol, isomeric=True, explicit_hydrogen=True, mapped=True)
     atom_map = utils.get_atom_map(mol, mapped_smiles)
     symbols, geometry = toolkit.get_map_ordered_geometry(mol, atom_map)
 

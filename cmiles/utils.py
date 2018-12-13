@@ -2,6 +2,8 @@
 Utility functions for cmiles generator
 """
 import numpy as np
+import copy
+import collections
 
 try:
     from rdkit import Chem
@@ -122,7 +124,63 @@ def mol_from_json(inp_molecule, toolkit='openeye', **kwargs):
     return molecule
 
 
-def to_map_ordered_qcschema(molecule, molecule_ids, multiplicity=1):
+def mol_to_smiles(molecule, **kwargs):
+    """
+
+    Parameters
+    ----------
+    molecule
+    kwargs
+
+    Returns
+    -------
+
+    """
+    molecule = copy.deepcopy(molecule)
+    toolkit = _set_toolkit(molecule)
+    return toolkit.mol_to_smiles(molecule, **kwargs)
+
+
+def mol_to_hill_molecular_formula(molecule):
+    """
+    Generate Hill sorted empirical formula. Hill sorted first lists C and H and then all other symbols in alphabetical
+    order
+    Parameters
+    ----------
+    molecule: openeye or rdkit molecule
+
+    Returns
+    -------
+    hill sorted empirical formula
+    """
+
+    # check molecule
+    toolkit = _set_toolkit(molecule)
+    if not has_explicit_hydrogen(molecule):
+        molecule = toolkit.add_explicit_hydrogen(molecule)
+    symbols = toolkit.get_symbols(molecule)
+
+    count = collections.Counter(x.title() for x in symbols)
+
+    hill_sorted = []
+    for k in ['C', 'H']:
+        # remove C and H from count
+        if k in count:
+            c = count.pop(k)
+            hill_sorted.append(k)
+            if c > 1:
+                hill_sorted.append(str(c))
+
+    for k in sorted(count.keys()):
+        c = count[k]
+        hill_sorted.append(k)
+        if c > 1:
+            hill_sorted.append(str(c))
+
+    return "".join(hill_sorted)
+
+
+def mol_to_map_ordered_qcschema(molecule, molecule_ids, multiplicity=1):
     """
 
     Parameters
@@ -197,7 +255,7 @@ def permute_qcschema(json_mol, molecule_ids, toolkit='openeye'):
 
     """
     molecule = mol_from_json(json_mol, toolkit=toolkit)
-    ordered_qcschema = to_map_ordered_qcschema(molecule, molecule_ids, json_mol['molecular_multiplicity'])
+    ordered_qcschema = mol_to_map_ordered_qcschema(molecule, molecule_ids, json_mol['molecular_multiplicity'])
 
     return ordered_qcschema
 

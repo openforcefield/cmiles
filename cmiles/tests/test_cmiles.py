@@ -133,7 +133,7 @@ def test_rdkit_isomeric(smiles_input, rd_iso_expected):
     """testing rdkit isomeric canonical smiles"""
     for i, o in zip(smiles_input, rd_iso_expected):
         rd_mol = Chem.MolFromSmiles(i)
-        assert cmiles.to_canonical_smiles_rd(rd_mol, isomeric=True, mapped=False, explicit_hydrogen=False) == o
+        assert cmiles.utils.mol_to_smiles(rd_mol, isomeric=True, mapped=False, explicit_hydrogen=False) == o
 
 
 @using_rdkit
@@ -141,7 +141,7 @@ def test_rdkit_map(smiles_input, rd_map_expected):
     """Testing rdkit canonical map ordering"""
     for i, o in zip(smiles_input, rd_map_expected):
         rd_mol = Chem.MolFromSmiles(i)
-        assert cmiles.to_canonical_smiles_rd(rd_mol, isomeric=True, mapped=True, explicit_hydrogen=True) == o
+        assert cmiles.utils.mol_to_smiles(rd_mol, isomeric=True, mapped=True, explicit_hydrogen=True) == o
 
 
 @using_rdkit
@@ -149,7 +149,7 @@ def test_rdkit_canonical(smiles_input, rd_can_expected):
     """Testing rdkit canonical smiles"""
     for i, o in zip(smiles_input, rd_can_expected):
         rd_mol = Chem.MolFromSmiles(i)
-        assert cmiles.to_canonical_smiles_rd(rd_mol, isomeric=False, mapped=False, explicit_hydrogen=False) == o
+        assert cmiles.utils.mol_to_smiles(rd_mol, isomeric=False, mapped=False, explicit_hydrogen=False) == o
 
 
 @using_rdkit
@@ -157,7 +157,7 @@ def test_rdkit_explicit_h(smiles_input, rd_h_expected):
     """Testing rdkit explicit hydrogen"""
     for i, o in zip(smiles_input, rd_h_expected):
         rd_mol = Chem.MolFromSmiles(i)
-        assert cmiles.to_canonical_smiles_rd(rd_mol, isomeric=True, mapped=False, explicit_hydrogen=True) == o
+        assert cmiles.utils.mol_to_smiles(rd_mol, isomeric=True, mapped=False, explicit_hydrogen=True) == o
 
 
 @using_openeye
@@ -166,7 +166,7 @@ def test_openeye_explicit_h(smiles_input, oe_h_expected):
     for i, o in zip(smiles_input, oe_h_expected):
         oe_mol = oechem.OEMol()
         oechem.OESmilesToMol(oe_mol, i)
-        assert cmiles.to_canonical_smiles_oe(oe_mol, isomeric=True, mapped=False, explicit_hydrogen=True) == o
+        assert cmiles.utils.mol_to_smiles(oe_mol, isomeric=True, mapped=False, explicit_hydrogen=True) == o
 
 
 @using_openeye
@@ -175,7 +175,7 @@ def test_openeye_isomeric(smiles_input, oe_iso_expected):
     for i, o in zip(smiles_input, oe_iso_expected):
         oe_mol = oechem.OEMol()
         oechem.OESmilesToMol(oe_mol, i)
-        assert cmiles.to_canonical_smiles_oe(oe_mol, isomeric=True, mapped=False, explicit_hydrogen=False) == o
+        assert cmiles.utils.mol_to_smiles(oe_mol, isomeric=True, mapped=False, explicit_hydrogen=False) == o
 
 
 @using_openeye
@@ -184,7 +184,7 @@ def test_openeye_map(smiles_input, oe_map_expected):
     for i, o in zip(smiles_input, oe_map_expected):
         oe_mol = oechem.OEMol()
         oechem.OESmilesToMol(oe_mol, i)
-        assert cmiles.to_canonical_smiles_oe(oe_mol, isomeric=True, mapped=True, explicit_hydrogen=True) == o
+        assert cmiles.utils.mol_to_smiles(oe_mol, isomeric=True, mapped=True, explicit_hydrogen=True) == o
 
 
 @using_openeye
@@ -193,7 +193,7 @@ def test_openeye_canonical(smiles_input, oe_can_expected):
     for i, o in zip(smiles_input, oe_can_expected):
         oe_mol = oechem.OEMol()
         oechem.OESmilesToMol(oe_mol, i)
-        assert cmiles.to_canonical_smiles_oe(oe_mol, isomeric=False, mapped=False, explicit_hydrogen=False) == o
+        assert cmiles.utils.mol_to_smiles(oe_mol, isomeric=False, mapped=False, explicit_hydrogen=False) == o
 
 
 @using_rdkit
@@ -286,7 +286,7 @@ def test_drug_bank_rd(input, output):
     """
 
     mol = Chem.MolFromSmiles(input)
-    assert cmiles.generator.to_canonical_smiles_rd(mol, mapped=True, isomeric=True, explicit_hydrogen=True) == output
+    assert cmiles.utils.mol_to_smiles(mol, mapped=True, isomeric=True, explicit_hydrogen=True) == output
 
 
 @using_openeye
@@ -305,7 +305,7 @@ def test_drug_bank_oe(input, output):
     """
     mol = oechem.OEMol()
     oechem.OEParseSmiles(mol, input)
-    assert cmiles.generator.to_canonical_smiles_oe(mol, mapped=True, isomeric=True, explicit_hydrogen=True) == output
+    assert cmiles.utils.mol_to_smiles(mol, mapped=True, isomeric=True, explicit_hydrogen=True) == output
 
 
 @using_rdkit
@@ -337,28 +337,28 @@ def test_input_mapped():
 
     mol_1 = cmiles.utils.load_molecule(mol_id['canonical_isomeric_smiles'])
     mol_2 = cmiles.utils.load_molecule(mol_id['canonical_isomeric_explicit_hydrogen_mapped_smiles'])
-    assert cmiles.utils.is_mapped(mol_1) == False
-    assert cmiles.utils.is_mapped(mol_2) == True
+    assert cmiles.utils.has_atom_map(mol_1) == False
+    assert cmiles.utils.has_atom_map(mol_2) == True
 
-    mol_id = cmiles.to_molecule_id(smiles, canonicalization='rdkit')
+    mol_id = cmiles.to_molecule_id(smiles, canonicalization='rdkit', strict=False)
 
     mol_1 = cmiles.utils.load_molecule(mol_id['canonical_isomeric_smiles'], backend='rdkit')
     mol_2 = cmiles.utils.load_molecule(mol_id['canonical_isomeric_explicit_hydrogen_mapped_smiles'], backend='rdkit')
-    assert cmiles.utils.is_mapped(mol_1) == False
-    assert cmiles.utils.is_mapped(mol_2) == True
+    assert cmiles.utils.has_atom_map(mol_1) == False
+    assert cmiles.utils.has_atom_map(mol_2) == True
 
 
 def _map_from_json(hooh, backend, map_smiles):
 
-    molecule = cmiles.utils.load_molecule(hooh, backend=backend)
+    molecule = cmiles.utils.load_molecule(hooh, toolkit=backend)
     if backend == 'openeye':
-        mapped_smiles_1 = cmiles.generator.to_canonical_smiles_oe(molecule, isomeric=True, explicit_hydrogen=True, mapped=True)
+        mapped_smiles_1 = cmiles.utils.mol_to_smiles(molecule, isomeric=True, explicit_hydrogen=True, mapped=True)
         molecule.SetData("json_geometry", False)
-        mapped_smiles_2 = cmiles.generator.to_canonical_smiles_oe(molecule, isomeric=True, explicit_hydrogen=True, mapped=True)
+        mapped_smiles_2 = cmiles.utils.mol_to_smiles(molecule, isomeric=True, explicit_hydrogen=True, mapped=True)
     if backend == 'rdkit':
-        mapped_smiles_1 = cmiles.generator.to_canonical_smiles_rd(molecule, isomeric=True, explicit_hydrogen=True, mapped=True)
+        mapped_smiles_1 = cmiles.utils.mol_to_smiles(molecule, isomeric=True, explicit_hydrogen=True, mapped=True)
         molecule.SetProp("_json_geometry", '0')
-        mapped_smiles_2 = cmiles.generator.to_canonical_smiles_rd(molecule, isomeric=True, explicit_hydrogen=True, mapped=True)
+        mapped_smiles_2 = cmiles.utils.mol_to_smiles(molecule, isomeric=True, explicit_hydrogen=True, mapped=True)
 
     assert mapped_smiles_1 == '[H:1][O:2][O:3][H:4]'
     assert mapped_smiles_2 == map_smiles
@@ -609,22 +609,22 @@ def test_bond_stereo():
 @using_openeye
 def _chemical_formula_oe(smiles):
     from openeye import oechem
-    molecule = cmiles.utils.load_molecule(smiles, backend='openeye')
+    molecule = cmiles.utils.load_molecule(smiles, toolkit='openeye')
     oechem.OEAddExplicitHydrogens(molecule)
-    return (cmiles.generator.molecular_formula(molecule))
+    return (cmiles.utils.mol_to_hill_molecular_formula(molecule))
 
 @using_rdkit
 def _chemical_formula_rd(smiles):
     from rdkit import Chem
-    molecule = cmiles.utils.load_molecule(smiles, backend='rdkit')
+    molecule = cmiles.utils.load_molecule(smiles, toolkit='rdkit')
     molecule = Chem.AddHs(molecule)
-    return (cmiles.generator.molecular_formula(molecule))
+    return (cmiles.utils.mol_to_hill_molecular_formula(molecule))
 
 @using_rdkit
 @using_openeye
 @pytest.mark.parametrize("backend", [_chemical_formula_oe, _chemical_formula_rd])
-@pytest.mark.parametrize("smiles, bench", [("CCCC", "C4H10"), ("C", "CH4"), ("CC(Br)(Br)", "C2H4Br2")]) # This uncovered a bug in load_molecule. The period makes it look like a filename
-                                                               #  ("[Li+].[Li+].[O2-]", "LiO2")]) ToDo fix this bug
+@pytest.mark.parametrize("smiles, bench", [("CCCC", "C4H10"), ("C", "CH4"), ("CC(Br)(Br)", "C2H4Br2"),
+                                           ("[Li+].[O]=O", "LiO2")])
 def test_molecule_formula(backend, smiles, bench):
     assert backend(smiles) == bench
 

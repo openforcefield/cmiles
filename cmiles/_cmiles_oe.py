@@ -1,6 +1,7 @@
 """
 
 """
+import openeye as toolkit
 from openeye import oechem
 import time
 import copy
@@ -51,6 +52,7 @@ def mol_from_json(symbols, connectivity, geometry, permute_xyz=False):
     oechem.OEAssignImplicitHydrogens(molecule)
     oechem.OEAssignFormalCharges(molecule)
     oechem.OEAssignAromaticFlags(molecule)
+    oechem.OEPerceiveChiral(molecule)
     oechem.OE3DToAtomStereo(molecule)
     oechem.OE3DToBondStereo(molecule)
 
@@ -101,12 +103,80 @@ def canonical_order_atoms(molecule, in_place=True):
         return molecule
 
 
+def mol_to_smiles(molecule, isomeric=True, explicit_hydrogen=True, mapped=True):
+    """
+    Generate canonical SMILES with OpenEye.
+    Parameters
+    ----------
+
+    molecule: oechem.OEMol
+    isomeric: bool
+        If True, SMILES will include chirality and stereo bonds
+    explicit_hydrogen: bool
+        If True, SMILES will include explicit hydrogen
+    mapped: bool
+        If True, will include map indices (In order of OpenEye omega canonical ordering)
+    generate_conformer: bool, optional. Default True
+        Generating conformer is needed to infer stereochemistry if SMILES does not have stereochemistry specified. Sometimes,
+        however, this can be very slow because the molecule has many rotatable bonds. Then it is recommended to turn
+        off generate_conformer but the stereochemistry might not be specified in the isomeric SMILES
+
+    Returns
+    -------
+    smiles str
+
+    """
+
+    molecule = oechem.OEMol(molecule)
+
+    if explicit_hydrogen:
+        oechem.OEAddExplicitHydrogens(molecule)
+
+    # First check if geometry from JSON exists
+    try:
+        JSON_geometry = molecule.GetData('json_geometry')
+    except ValueError:
+        JSON_geometry = False
+
+    if isomeric:
+        if not has_stereo_defined(molecule):
+            raise ValueError("Smiles must have stereochemistry defined.")
+
+    if not explicit_hydrogen and not mapped and isomeric:
+        return oechem.OEMolToSmiles(molecule)
+    if not explicit_hydrogen and not mapped and not isomeric:
+        return oechem.OECreateSmiString(molecule, oechem.OESMILESFlag_Canonical | oechem.OESMILESFlag_RGroups)
+
+    if not mapped and explicit_hydrogen and isomeric:
+        return oechem.OECreateSmiString(molecule, oechem.OESMILESFlag_Hydrogens | oechem.OESMILESFlag_ISOMERIC)
+
+    if not mapped and explicit_hydrogen and not isomeric:
+        return oechem.OECreateSmiString(molecule, oechem.OESMILESFlag_Hydrogens | oechem.OESMILESFlag_Canonical |
+                                        oechem.OESMILESFlag_RGroups)
+
+    if not JSON_geometry:
+        # canonical order of atoms if input was SMILES or permute_xyz is true
+        canonical_order_atoms(molecule)
+
+    for atom in molecule.GetAtoms():
+        atom.SetMapIdx(atom.GetIdx() + 1)
+
+    if mapped and not explicit_hydrogen:
+        raise Warning("Tagged SMILES must include hydrogens to retain order")
+
+    if mapped and not isomeric:
+        raise Warning("Tagged SMILES must include stereochemistry ")
+
+    return oechem.OEMolToSmiles(molecule)
+
+
 def get_connectivity_table(molecule, inverse_map):
     """
 
     Parameters
     ----------
     molecule
+    inverse_map
 
     Returns
     -------
@@ -198,6 +268,15 @@ def has_explicit_hydrogen(molecule):
 
     """
     return not oechem.OEHasImplicitHydrogens(molecule)
+
+
+def add_explicit_hydrogen(molecule):
+    oechem.OEAddExplicitHydrogens(molecule)
+    return molecule
+
+
+def get_symbols(molecule):
+    return [oechem.OEGetAtomicSymbol(a.GetAtomicNum()) for a in molecule.GetAtoms()]
 
 
 def has_stereo_defined(molecule):

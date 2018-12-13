@@ -205,7 +205,7 @@ def to_canonical_smiles_rd(molecule, isomeric, explicit_hydrogen, mapped):
     except KeyError:
         json_geometry = False
 
-    if isomeric and not cmiles.utils.has_stereo_defined(molecule, backend='rdkit'):
+    if isomeric and not cmiles.utils.has_stereo_defined(molecule):
         raise ValueError("Some stereochemistry is not defined")
 
     # Get canonical order for map
@@ -215,7 +215,7 @@ def to_canonical_smiles_rd(molecule, isomeric, explicit_hydrogen, mapped):
             for i in range(molecule.GetNumAtoms()):
                 molecule.GetAtomWithIdx(i).SetAtomMapNum(i+1)
         else:
-            molecule = cmiles.utils.canonical_order_atoms_rd(molecule)
+            molecule = cmiles._cmiles_rd.canonical_order_atoms(molecule)
 
     smiles = rd.Chem.MolToSmiles(molecule, allHsExplicit=explicit_hydrogen, isomericSmiles=isomeric, canonical=True)
     return smiles
@@ -275,7 +275,7 @@ def to_canonical_smiles_oe(molecule, isomeric, explicit_hydrogen, mapped):
         #oechem.OEPerceiveChiral(molecule)
         #oechem.OE3DToAtomStereo(molecule)
         #oechem.OE3DToBondStereo(molecule)
-        if not cmiles.utils.has_stereo_defined(molecule, backend='openeye'):
+        if not cmiles.utils.has_stereo_defined(molecule):
             raise ValueError("Smiles must have stereochemistry defined.")
 
     if not explicit_hydrogen and not mapped and isomeric:
@@ -292,7 +292,7 @@ def to_canonical_smiles_oe(molecule, isomeric, explicit_hydrogen, mapped):
 
     # Add tags to molecule
     if not JSON_geometry:
-        cmiles.utils.canonical_order_atoms_oe(molecule)
+        cmiles._cmiles_oe.canonical_order_atoms(molecule)
         # canonical order of atoms if input was SMILES. For JSON serialized molecule, keep the original order.
     for atom in molecule.GetAtoms():
         atom.SetMapIdx(atom.GetIdx() + 1)

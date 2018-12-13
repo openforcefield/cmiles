@@ -1,11 +1,7 @@
 """
 Utility functions for cmiles generator
 """
-import copy
 import numpy as np
-import warnings
-import time
-from cmiles.generator import to_molecule_id
 
 try:
     from rdkit import Chem
@@ -15,10 +11,14 @@ except ImportError:
 
 try:
     from openeye import oechem
+    if not oechem.OEChemIsLicensed():
+        has_openeye = False
     has_openeye = True
 except ImportError:
     has_openeye = False
 
+if not has_openeye and not has_rdkit:
+    raise ImportError("Must have openeye or rdkit installed")
 
 _symbols = {'H': 1, 'He': 2,
             'Li': 3, 'Be': 4, 'B': 5, 'C': 6, 'N': 7, 'O': 8, 'F': 9, 'Ne': 10,
@@ -36,7 +36,7 @@ BOHR_2_ANGSTROM = 0.529177210
 ANGSROM_2_BOHR = 1. / BOHR_2_ANGSTROM
 
 
-def load_molecule(inp_molecule, backend='openeye'):
+def load_molecule(inp_molecule, toolkit='openeye'):
     """
     Load molecule. Input restrictive. Can use and isomeric SMILES or a JSON serialized molecule
 
@@ -52,37 +52,30 @@ def load_molecule(inp_molecule, backend='openeye'):
         If has license to OpenEye, will return an OpenEye molecule. Otherwise will return a RDKit molecule if input can
         be parsed with RDKit.
     """
+
     # Check input
     if isinstance(inp_molecule, dict):
         # This is a JSON molecule.
-        molecule = mol_from_json(inp_molecule, backend=backend)
+        molecule = mol_from_json(inp_molecule, toolkit=toolkit)
 
     elif isinstance(inp_molecule, str):
-
-        if backend == 'rdkit':
-            if not has_rdkit:
-                raise RuntimeError("You need to have RDKit installed to use the RDKit backend")
-            # Check for explicit hydrogen
-            molecule = Chem.MolFromSmiles(inp_molecule)
-            if not molecule:
-                raise ValueError("The supplied SMILES {} could not be parsed".format(inp_molecule))
-
-        elif backend == 'openeye':
-            if not has_openeye:
-                raise RuntimeError("You need to have OpenEye installed or an up-to-date license to use the openeye "
-                                   "backend")
+        if toolkit == 'openeye' and has_openeye:
             molecule = oechem.OEMol()
             if not oechem.OESmilesToMol(molecule, inp_molecule):
                 raise ValueError("The supplied SMILES {} could not be parsed".format(inp_molecule))
+        elif toolkit == 'rdkit' and has_rdkit:
+            molecule = Chem.MolFromSmiles(inp_molecule)
+            if not molecule:
+                raise ValueError("The supplied SMILES {} could not be parsed".format(inp_molecule))
         else:
-            raise RuntimeError("You must have either RDKit or OpenEye installed")
+            raise ValueError("Only openeye and rdkit toolkits are supported")
     else:
-        raise TypeError("Input must be either a SMILES string or a JSON serialized molecule")
+        raise ValueError("Only QCSchema serialized molecule or an isomric SMILES are valid inputs")
 
     return molecule
 
 
-def mol_from_json(inp_molecule, backend='openeye'):
+def mol_from_json(inp_molecule, toolkit='openeye'):
     """
     Load a molecule from QCSchema
     The input JSON should use QCSchema specs (https://molssi-qc-schema.readthedocs.io/en/latest/index.html#)
@@ -114,118 +107,14 @@ def mol_from_json(inp_molecule, backend='openeye'):
     if len(symbols) != geometry.shape[0]/3:
         raise ValueError("Number of atoms in molecule does not match length of position array")
 
-    if backend == 'openeye':
-        molecule = _mol_from_json_oe(symbols, connectivity, geometry)
-    elif backend == 'rdkit':
-        molecule = _mol_from_json_rd(symbols, connectivity, geometry)
+    if toolkit == 'openeye' and has_openeye:
+        import cmiles._cmiles_oe as mol_toolkit
+    elif toolkit == 'rdkit' and has_rdkit:
+        import cmiles._cmiles_rd as mol_toolkit
     else:
         raise ValueError("Only openeye and rdkit backends are supported")
 
-    return molecule
-
-
-def _mol_from_json_oe(symbols, connectivity, geometry):
-    """
-    Generate OEMol from QCSchema molecule specs
-    Parameters
-    ----------
-    inp_molecule: dict
-        Must have symbols and connectivity and/or geometry
-        Note: If geometry is given, the molecule will have a tag indicating that the goemetry came from QCSchema. This
-        will ensure that the order of the atoms and configuration is not change for generation of mapped SMILES and
-        isomeric SMILES.
-
-    Returns
-    -------
-    molecule: OEMol
-
-    """
-
-    if not has_openeye:
-        raise RuntimeError("You do not have OpenEye installed or do not have license to use it. Use the RDKit backend")
-
-    molecule = oechem.OEMol()
-    for s in symbols:
-        molecule.NewAtom(_symbols[s])
-
-    # Add connectivity
-    for bond in connectivity:
-        a1 = molecule.GetAtom(oechem.OEHasAtomIdx(bond[0]))
-        a2 = molecule.GetAtom(oechem.OEHasAtomIdx(bond[1]))
-        molecule.NewBond(a1, a2, bond[-1])
-
-    # Add geometry
-    if molecule.NumAtoms() != geometry.shape[0]/3:
-        raise ValueError("Number of atoms in molecule does not match length of position array")
-
-    molecule.SetCoords(oechem.OEFloatArray(geometry))
-    molecule.SetDimension(3)
-
-    # Add tag that the geometry is from JSON and shouldn't be changed.
-    geom_tag = oechem.OEGetTag("json_geometry")
-    molecule.SetData(geom_tag, True)
-    oechem.OEDetermineConnectivity(molecule)
-    oechem.OEFindRingAtomsAndBonds(molecule)
-    oechem.OEPerceiveBondOrders(molecule)
-    oechem.OEAssignImplicitHydrogens(molecule)
-    oechem.OEAssignFormalCharges(molecule)
-    oechem.OEAssignAromaticFlags(molecule)
-    oechem.OE3DToAtomStereo(molecule)
-    oechem.OE3DToBondStereo(molecule)
-
-    return molecule
-
-
-def _mol_from_json_rd(symbols, connectivity, geometry):
-    """
-    Generate RDkit.Chem.Mol from QCSchema molecule specs.
-    Parameters
-    ----------
-    inp_molecule: dict
-        Must include symbols and connectivity. Geometry is optional. If geometry is given, stereochemistry will be taken
-        from coordinates
-
-    Returns
-    -------
-    molecule: rdkit.Chem.Mol
-    """
-
-    if not has_rdkit:
-        raise RuntimeError("Must have RDKit installed when using the RDKit backend")
-    from rdkit.Geometry.rdGeometry import Point3D
-
-    _BO_DISPATCH_TABLE = {1: Chem.BondType.SINGLE, 2: Chem.BondType.DOUBLE, 3: Chem.BondType.TRIPLE}
-
-    geometry = geometry.reshape(int(len(geometry)/3), 3)
-    conformer = Chem.Conformer(len(symbols))
-    has_geometry = True
-
-    molecule = Chem.Mol()
-    em = Chem.RWMol(molecule)
-    for i, s in enumerate(symbols):
-        atom = em.AddAtom(Chem.Atom(_symbols[s]))
-        atom_position = Point3D(geometry[i][0], geometry[i][1], geometry[i][2])
-        conformer.SetAtomPosition(atom, atom_position)
-
-    # Add connectivity
-    for bond in connectivity:
-        bond_type = _BO_DISPATCH_TABLE[bond[-1]]
-        em.AddBond(bond[0], bond[1], bond_type)
-
-    molecule = em.GetMol()
-    try:
-        Chem.SanitizeMol(molecule)
-    except:
-        raise RuntimeError("Could not sanitize molecule")
-
-    # Add coordinates
-    if has_geometry:
-        initial_conformer_id = molecule.AddConformer(conformer, assignId=True)
-        # Assign stereochemistry from coordinates
-        from rdkit.Chem import rdmolops
-        rdmolops.AssignStereochemistryFrom3D(molecule, confId=initial_conformer_id, replaceExistingTags=True)
-        # Add a tag to keep current order
-        molecule.SetProp("_json_geometry", '1')
+    molecule = mol_toolkit.mol_from_json(symbols, connectivity, geometry)
 
     return molecule
 
@@ -274,7 +163,7 @@ def get_atom_map(molecule, mapped_smiles):
     return atom_map
 
 
-def get_connectivity_table(molecule, atom_map, set_aromitcity_model=True):
+def get_connectivity_table(molecule, atom_map):
     """
 
     Parameters
@@ -288,8 +177,6 @@ def get_connectivity_table(molecule, atom_map, set_aromitcity_model=True):
     """
 
     toolkit = _set_toolkit(molecule)
-    if set_aromitcity_model:
-        set_aromaticity_mdl(molecule)
     inverse_map = dict(zip(atom_map.values(), atom_map.keys()))
     return toolkit.get_connectivity_table(molecule, inverse_map)
 
@@ -305,29 +192,22 @@ def reorder_qcschema(json_mol, mapped_smiles):
 #     b. If mol does not have map, must supply mapped SMILES
 
 
-def is_mapped(molecule):
+def has_atom_map(molecule):
+    """
 
-    if has_rdkit:
-        if isinstance(molecule, Chem.Mol):
-            backend = 'rdkit'
-    if has_openeye:
-        if isinstance(molecule, (oechem.OEMol, oechem.OEGraphMol, oechem.OEMolBase)):
-            backend = 'openeye'
+    Parameters
+    ----------
+    molecule
 
-    IS_MAPPED = True
-    for atom in molecule.GetAtoms():
-        if backend == 'openeye':
-            if atom.GetMapIdx() == 0:
-                IS_MAPPED = False
-        elif backend == 'rdkit':
-            if atom.GetAtomMapNum() == 0:
-                IS_MAPPED = False
-        else:
-            raise TypeError("Only openeye or rdkit are supported backends")
-    return IS_MAPPED
+    Returns
+    -------
+
+    """
+    toolkit = _set_toolkit(molecule)
+    return toolkit.has_atom_map(molecule)
 
 
-def remove_map(molecule):
+def remove_atom_map(molecule):
     """
     Remove atom map from molecule.
     This is done for several reasons such as the
@@ -339,22 +219,11 @@ def remove_map(molecule):
     -------
 
     """
-    if has_rdkit:
-        if isinstance(molecule, Chem.Mol):
-            backend = 'rdkit'
-    if has_openeye:
-        if isinstance(molecule, (oechem.OEMol, oechem.OEGraphMol, oechem.OEMolBase)):
-            backend = 'openeye'
-    for a in molecule.GetAtoms():
-        if backend == 'openeye':
-            a.SetMapIdx(0)
-        elif backend == 'rdkit':
-            a.SetAtomMapNum(0)
-        else:
-            raise TypeError("Only openeye and rdkit are supported backends")
+    toolkit = _set_toolkit(molecule)
+    toolkit.remove_atom_map(molecule)
 
 
-def has_stereo_defined(molecule, backend='openeye'):
+def has_stereo_defined(molecule):
     """
     ToDo check for incorrect steroe (OEMDLHasIncorrectBondStereo)
 
@@ -367,175 +236,8 @@ def has_stereo_defined(molecule, backend='openeye'):
     -------
 
     """
-    if backend == 'openeye' and has_openeye:
-        if not isinstance(molecule, (oechem.OEMol, oechem.OEMolBase, oechem.OEGraphMol)):
-            raise TypeError("If using openeye must have an oemol")
-        stereo = _has_stereo_defined_oe(molecule)
-
-    elif backend == 'rdkit' and has_rdkit:
-        if not isinstance(molecule, Chem.Mol):
-            raise TypeError("If using rdkit, must provide an rdkit.Chem.Mol")
-        stereo = _has_stereo_defined_rd(molecule)
-
-    else:
-        raise TypeError("only openeye and rdkit are supported")
-    return stereo
-
-
-def _has_stereo_defined_oe(molecule):
-    """
-    Check if any stereochemistry in undefined.
-    Parameters
-    ----------
-    molecule: OEMol
-
-    Returns
-    -------
-    bool: True if all stereo chemistry is defined.
-        If any stereochemsitry is undefined, raise and exception.
-
-    """
-
-    if has_openeye:
-        if not oechem.OEChemIsLicensed():
-            raise ImportError("Must have oechem License!")
-    else:
-        raise ImportError("Must have openeye installed")
-
-    # perceive stereochemistry
-    oechem.OEPerceiveChiral(molecule)
-
-    unspec_chiral = False
-    unspec_db = False
-    problematic_atoms = list()
-    problematic_bonds = list()
-    for atom in molecule.GetAtoms():
-        if atom.IsChiral() and not atom.HasStereoSpecified(oechem.OEAtomStereo_Tetrahedral):
-            # Check if handness is specified
-            v = []
-            for nbr in atom.GetAtoms():
-                v.append(nbr)
-            stereo = atom.GetStereo(v, oechem.OEAtomStereo_Tetrahedral)
-            if stereo == oechem.OEAtomStereo_Undefined:
-                unspec_chiral = True
-                problematic_atoms.append((atom.GetIdx(), oechem.OEGetAtomicSymbol(atom.GetAtomicNum())))
-    for bond in molecule.GetBonds():
-        if bond.IsChiral() and not bond.HasStereoSpecified(oechem.OEBondStereo_CisTrans):
-            if not _ignore_stereo_flag_oe(bond):
-                v = []
-                for neigh in bond.GetBgn().GetAtoms():
-                    if neigh != bond.GetEnd():
-                        v.append(neigh)
-                        break
-                for neigh in bond.GetEnd().GetAtoms():
-                    if neigh != bond.GetBgn():
-                        v.append(neigh)
-                        break
-                stereo = bond.GetStereo(v, oechem.OEBondStereo_CisTrans)
-
-                if stereo == oechem.OEBondStereo_Undefined:
-                    unspec_db = True
-                    a1 = bond.GetBgn()
-                    a2 = bond.GetEnd()
-                    a1_idx = a1.GetIdx()
-                    a2_idx = a2.GetIdx()
-                    a1_s = oechem.OEGetAtomicSymbol(a1.GetAtomicNum())
-                    a2_s = oechem.OEGetAtomicSymbol(a2.GetAtomicNum())
-                    bond_order = bond.GetOrder()
-                    problematic_bonds.append((a1_idx, a1_s, a2_idx, a2_s, bond_order))
-    if unspec_chiral or unspec_db:
-        raise ValueError("Stereochemistry is unspecified. Problematic atoms {}, problematic bonds {}".format(
-                problematic_atoms,
-                problematic_bonds))
-    else:
-        return True
-
-
-def _ignore_stereo_flag_oe(bond):
-
-    ignore = False
-    beg = bond.GetBgn()
-    end = bond.GetEnd()
-
-    if (beg.GetAtomicNum() == 7) and (end.GetAtomicNum() == 6) and (bond.GetOrder() == 2):
-        for i, a in enumerate(beg.GetAtoms()):
-            if a != end and a.GetAtomicNum() == 1:
-                # This is a C=NH bond and should be ignored when flagged
-                ignore = True
-                break
-        if i == 0 and beg.GetImplicitHCount() == 1:
-            # This is a C=NH bond with implicit H
-            ignore = True
-
-    if (beg.GetAtomicNum() == 6) and (end.GetAtomicNum() == 7) and (bond.GetOrder() == 2):
-        for i, a in enumerate(end.GetAtoms()):
-            if a != beg and a.GetAtomicNum() == 1:
-                # This is a C=NH bond and should be ignored when flagged
-                ignore = True
-                break
-        if i == 0 and end.GetImplicitHCount() == 1:
-            # This is a C=NH bond with implicit H
-            ignore = True
-    return ignore
-
-
-def _has_stereo_defined_rd(molecule):
-    """
-
-    Parameters
-    ----------
-    molecule
-
-    Returns
-    -------
-
-    """
-
-    unspec_chiral = False
-    unspec_db = False
-    problematic_atoms = list()
-    problematic_bonds = list()
-    chiral_centers = Chem.FindMolChiralCenters(molecule, includeUnassigned=True)
-    for center in chiral_centers:
-        atom_id = center[0]
-        if center[-1] == '?':
-            unspec_chiral = True
-            problematic_atoms.append((atom_id, molecule.GetAtomWithIdx(atom_id).GetSmarts()))
-
-    # Find potential stereo bonds that are unspecified
-    Chem.FindPotentialStereoBonds(molecule)
-    for bond in molecule.GetBonds():
-        if bond.GetStereo() == Chem.BondStereo.STEREOANY:
-            if not _ignore_stereo_flag_rd(bond):
-                unspec_db = True
-                problematic_bonds.append((bond.GetBeginAtom().GetSmarts(), bond.GetSmarts(),
-                                                bond.GetEndAtom().GetSmarts()))
-    if unspec_chiral or unspec_db:
-        raise ValueError("Stereochemistry is unspecified. Problematic atoms {}, problematic bonds {}".format(
-                problematic_atoms, problematic_bonds))
-    else:
-        return True
-
-
-def _ignore_stereo_flag_rd(bond):
-    ignore = False
-    beg = bond.GetBeginAtom()
-    end = bond.GetEndAtom()
-
-    if (beg.GetAtomicNum() == 7) and (end.GetAtomicNum() == 6) and (bond.GetBondType() == Chem.BondType.DOUBLE):
-        for a in beg.GetNeighbors():
-            if a != end and a.GetAtomicNum() == 1:
-                # This is a C=NH bond and should be ignored when flagged
-                ignore = True
-                break
-
-    if (beg.GetAtomicNum() == 6) and (end.GetAtomicNum() == 7) and (bond.GetBondType() == Chem.BondType.DOUBLE):
-        for a in end.GetNeighbors():
-            if a != beg and a.GetAtomicNum() == 1:
-                # This is a C=NH bond and should be ignored when flagged
-                ignore = True
-                break
-    return ignore
+    toolkit = _set_toolkit(molecule)
+    return toolkit.has_stereo_defined(molecule)
 
 
 def has_explicit_hydrogen(molecule):
@@ -554,116 +256,12 @@ def has_explicit_hydrogen(molecule):
     return toolkit.has_explicit_hydrogen(molecule)
 
 
-def canonical_order_atoms_oe(molecule, in_place=True):
-    """
-    Canonical order of atom indices. This ensures the map indices are always in the same order.
-    Parameters
-    ----------
-    molecule: oechem.OEMol
-    in_place: bool, optional, default True
-        If True, the order of atom indices will happen in place. If False, a copy of the molecule with reordered atom
-        indices will be returned.
-
-    Returns
-    -------
-    molecule: OEMol with canonical ordered atom indices.
-
-    """
-
-    if not in_place:
-        molecule = copy.deepcopy(molecule)
-
-    oechem.OECanonicalOrderAtoms(molecule)
-    oechem.OECanonicalOrderBonds(molecule)
-
-    vatm = []
-    for atom in molecule.GetAtoms():
-        if atom.GetAtomicNum() != oechem.OEElemNo_H:
-            vatm.append(atom)
-    molecule.OrderAtoms(vatm)
-
-    vbnd = []
-    for bond in molecule.GetBonds():
-        if bond.GetBgn().GetAtomicNum() != oechem.OEElemNo_H and bond.GetEnd().GetAtomicNum() != oechem.OEElemNo_H:
-            vbnd.append(bond)
-    molecule.OrderBonds(vbnd)
-
-    molecule.Sweep()
-
-    for bond in molecule.GetBonds():
-        if bond.GetBgnIdx() > bond.GetEndIdx():
-            bond.SwapEnds()
-
-    if not in_place:
-        return molecule
-
-
-def canonical_order_atoms_rd(molecule, h_last=True):
-    """
-    Canonical order atoms in RDKit molecule. Eaach atom in the molecule is given a map index that corresponds to the RDkit
-    rank for that atom (+1). RDKit atom ranking ranks hydrogens first and then the heavy atoms. When
-    h_last is set to True, the map indices are reordered to put hydrogens after the heavy atoms.
-    Parameters
-    ----------
-    molecule: rdkit mol
-    h_last: bool, optional, default is True
-
-    Returns
-    -------
-    molecule: rdkit molecule with map indices that correspond to the atom canonical rank
-    """
-
-    # Check if molecule already has map. If it does, remove map because Chem.CanonicalRankAtoms uses map indices in
-    # ranking
-    if is_mapped(molecule):
-        remove_map(molecule)
-
-    # Add explicit hydrogen
-    molecule = Chem.AddHs(molecule)
-    heavy_atoms = 0
-    hydrogens = 0
-    ranks = list(Chem.CanonicalRankAtoms(molecule, breakTies=True))
-    for i, j in enumerate(ranks):
-        atom = molecule.GetAtomWithIdx(i)
-        atom.SetAtomMapNum(j+1)
-        if atom.GetAtomicNum() != 1:
-            # heavy atom
-            heavy_atoms +=1
-        else:
-            # hydrogen
-            hydrogens +=1
-
-    if h_last:
-        # reorder map to put hydrogen last
-        for atom in molecule.GetAtoms():
-            map_idx = atom.GetAtomMapNum()
-            if atom.GetAtomicNum() !=1:
-                atom.SetAtomMapNum(map_idx - hydrogens)
-            else:
-                atom.SetAtomMapNum(map_idx + heavy_atoms)
-    return molecule
-
-
 def get_charge(molecule):
 
     charge = 0
     for atom in molecule.GetAtoms():
         charge += atom.GetFormalCharge()
     return charge
-
-
-def set_aromaticity_mdl(molecule):
-    """
-    Set aromaticity model to MDL to be consistent with OFF molecules. The model is set inplace.
-
-    Parameters
-    ----------
-    molecule: OEMol or rdmol.Mol molecule
-    """
-
-    toolkit = _set_toolkit(molecule)
-
-    toolkit.set_aromaticity_mdl(molecule)
 
 
 def _set_toolkit(molecule):

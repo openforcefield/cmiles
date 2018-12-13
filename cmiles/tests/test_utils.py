@@ -4,16 +4,16 @@ from cmiles import utils
 import pytest
 import numpy as np
 
-mol_tool_kits = list()
-toolkit_str = list()
+toolkits = list()
+toolkits_name = list()
 if utils.has_rdkit:
     from cmiles import _cmiles_rd
-    mol_tool_kits.append(_cmiles_rd)
-    toolkit_str.append('rdkit')
+    toolkits.append(_cmiles_rd)
+    toolkits_name.append('rdkit')
 if utils.has_openeye:
     from cmiles import _cmiles_oe
-    mol_tool_kits.append(_cmiles_oe)
-    toolkit_str.append('openeye')
+    toolkits.append(_cmiles_oe)
+    toolkits_name.append('openeye')
 
 rdkit_missing = False
 try:
@@ -31,7 +31,7 @@ using_rdkit = pytest.mark.skipif(not utils.has_rdkit, reason="Cannot run without
 using_openeye = pytest.mark.skipif(not utils.has_openeye, reason="Cannot run without OpenEye")
 
 
-@pytest.mark.parametrize('toolkit', toolkit_str)
+@pytest.mark.parametrize('toolkit', toolkits_name)
 def test_load_molecule(toolkit):
     """Test load molecules"""
     mol = utils.load_molecule('[H]C([H])([H])C([H])([H])C([H])([H])C([H])([H])[H]', toolkit=toolkit)
@@ -43,7 +43,7 @@ def test_load_molecule(toolkit):
         assert Chem.MolToSmiles(mol) == 'CCCC'
 
 
-@pytest.mark.parametrize('toolkit', toolkit_str)
+@pytest.mark.parametrize('toolkit', toolkits_name)
 def test_is_mapped(toolkit):
     """Test is mapped"""
     mapped_smiles = '[H:3][C:1]([H:4])([H:5])[C:2]([H:6])([H:7])[H:8]'
@@ -53,7 +53,7 @@ def test_is_mapped(toolkit):
     assert utils.has_atom_map(mapped_mol) == False
 
 
-@pytest.mark.parametrize('toolkit_str', toolkit_str)
+@pytest.mark.parametrize('toolkit_str', toolkits_name)
 def test_mol_from_json(toolkit_str):
     """Test oemol from json"""
     import numpy as np
@@ -83,7 +83,7 @@ def test_mol_from_json(toolkit_str):
             assert coordinates[i][j] == pytest.approx(geometry[i][j], 0.0000001)
 
 
-@pytest.mark.parametrize('toolkit_name', toolkit_str)
+@pytest.mark.parametrize('toolkit_name', toolkits_name)
 @pytest.mark.parametrize("input1, input2", [('C[C@](N)(O)F', 'CC(N)(O)F'),
                                    ('C(=C/Cl)\\F', 'C(=CCl)F'),
                                    ('CN(C)C/C=C/C(=O)NC1=C(C=C2C(=C1)C(=NC=N2)NC3=CC(=C(C=C3)F)Cl)O[C@H]4CCOC4',
@@ -155,7 +155,7 @@ def test_canonical_order_rd():
     assert Chem.MolToSmiles(mol_3) == '[O:1]([C:2]([H:4])([H:5])[H:6])[H:3]'
 
 
-@pytest.mark.parametrize('toolkit_name', toolkit_str)
+@pytest.mark.parametrize('toolkit_name', toolkits_name)
 @pytest.mark.parametrize('input, output', [('COC(C)c1c(Cl)ccc(F)c1Cl', False),
                                           ('C[C@@H](c1c(ccc(c1Cl)F)Cl)OC', False),
                                           ('O=O', True),
@@ -184,7 +184,7 @@ def test_explicit_h_oe(input, output):
     assert utils.has_explicit_hydrogen(mol) == output
 
 
-@pytest.mark.parametrize('toolkit', toolkit_str)
+@pytest.mark.parametrize('toolkit', toolkits_name)
 @pytest.mark.parametrize("smiles", ['CN(C)C(=N)NC(=N)N', 'N=CO'])
 def test_chiral_bond_exception(smiles, toolkit):
     """ Test bonds to ignore """
@@ -198,7 +198,7 @@ def test_chiral_bond_exception(smiles, toolkit):
     assert utils.has_stereo_defined(mol) == True
 
 
-@pytest.mark.parametrize('toolkit, toolkit_name', list(zip(mol_tool_kits, toolkit_str)))
+@pytest.mark.parametrize('toolkit, toolkit_name', list(zip(toolkits, toolkits_name)))
 @pytest.mark.parametrize("smiles, output", [('CN(C)C(=N)NC(=N)N', True),
                                            ('COC1=CC(CN(C)C2=CC=C3N=C(N)N=C(N)C3=C2)=C(OC)C=C1', False),
                                            ('[H][C@](C)(O)[C@@]([H])(N=C(O)[C@]1([H])C[C@@]([H])(CCC)CN1C)[C@@]1([H])O[C@]([H])(SC)[C@]([H])(O)[C@@]([H])(O)[C@@]1([H])O',
@@ -219,7 +219,7 @@ def test_chiral_bond_exception_2(smiles, output, toolkit, toolkit_name):
     assert ignore == output
 
 
-@pytest.mark.parametrize('toolkit, toolkit_name', list(zip(mol_tool_kits, toolkit_str)))
+@pytest.mark.parametrize('toolkit, toolkit_name', list(zip(toolkits, toolkits_name)))
 def test_get_atom_map(toolkit, toolkit_name):
     smiles = 'C[C@@H](c1c(ccc(c1Cl)F)Cl)OC'
     mol = utils.load_molecule(smiles, toolkit_name)
@@ -251,7 +251,7 @@ def test_get_atom_map(toolkit, toolkit_name):
                                                             np.array([[2, 4, 1], [2, 0, 2], [0, 1, 1], [1, 3, 2],
                                                                       [3, 4, 1], [3, 5, 1], [2, 8, 1], [0, 6, 1],
                                                                       [1, 7, 1], [5, 9, 1]]))])
-@pytest.mark.parametrize('toolkit', toolkit_str)
+@pytest.mark.parametrize('toolkit', toolkits_name)
 def test_connectivity(mapped_smiles, expected_table, toolkit):
     """Test connectivity table"""
     molecule = utils.load_molecule(mapped_smiles, toolkit)
@@ -267,6 +267,33 @@ def test_connectivity(mapped_smiles, expected_table, toolkit):
         assert expected_table[match][0][-1] == bond[-1]
 
 
-def test_map_order_geometry():
+@pytest.mark.parametrize('toolkit, toolkit_name', list(zip(toolkits, toolkits_name)))
+def test_map_order_geometry(toolkit, toolkit_name):
     """Test map ordered geometry"""
-    pass
+    hooh = {
+        'symbols': ['H', 'O', 'O', 'H'],
+        'geometry': [
+             1.84719633,  1.47046223,  0.80987166,
+             1.3126021,  -0.13023157, -0.0513322,
+            -1.31320906,  0.13130216, -0.05020593,
+            -1.83756335, -1.48745318,  0.80161212
+        ],
+        'name': 'HOOH',
+        'connectivity': [[0, 1, 1], [1, 2, 1], [2, 3, 1]],
+    }
+    mol = utils.load_molecule(hooh, toolkit=toolkit_name)
+    import cmiles
+    if toolkit_name == 'openeye':
+        mapped_smiles = cmiles.to_canonical_smiles_oe(mol, isomeric=True, explicit_hydrogen=True, mapped=True)
+    if toolkit_name == 'rdkit':
+        mapped_smiles = cmiles.to_canonical_smiles_rd(mol, isomeric=True, explicit_hydrogen=True, mapped=True)
+
+    atom_map = utils.get_atom_map(mol, mapped_smiles)
+    symbols, geometry = toolkit.get_map_ordered_geometry(mol, atom_map)
+
+    json_geom = np.asarray(hooh['geometry']).reshape(int(len(geometry)/3), 3)
+    geometry = np.asarray(geometry).reshape(int(len(geometry)/3), 3)
+
+    for m in atom_map:
+        for i in range(3):
+            assert json_geom[atom_map[m]][i] == pytest.approx(geometry[m-1][i], 0.0000001)

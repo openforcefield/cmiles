@@ -2,7 +2,7 @@
 
 """
 from rdkit import Chem
-from .utils import _symbols
+from .utils import _symbols, ANGSROM_2_BOHR
 
 
 def mol_from_json(symbols, connectivity, geometry):
@@ -147,6 +147,36 @@ def get_atom_map(molecule, mapped_smiles):
     for i, j in enumerate(idx_pattern_order):
         atom_map[mapped_pattern.GetAtomWithIdx(i).GetAtomMapNum()] = j
     return atom_map
+
+
+def get_map_ordered_geometry(molecule, atom_map):
+    """
+
+    Parameters
+    ----------
+    molecule
+
+    Returns
+    -------
+
+    """
+    try:
+        if not molecule.GetConformer().Is3D():
+            raise ValueError("Molecule must have 3D coordinates for generating QCSchema molecule")
+    except ValueError:
+        raise ValueError("Molecule must have 3D coordinates for generating QCSchema molecule")
+
+    symbols = []
+    geometry = []
+    for mapping in range(1, molecule.GetNumAtoms()+1):
+        idx = atom_map[mapping]
+        atom = molecule.GetAtomWithIdx(idx)
+        syb = atom.GetSymbol()
+        symbols.append(syb)
+        pos = molecule.GetConformer().GetAtomPosition(atom.GetIdx())
+        geometry.extend(getattr(pos, c) * ANGSROM_2_BOHR for c in ['x', 'y', 'z'])
+
+    return symbols, geometry
 
 
 def has_explicit_hydrogen(molecule):

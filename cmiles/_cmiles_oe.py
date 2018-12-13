@@ -153,7 +153,7 @@ def get_atom_map(molecule, mapped_smiles):
     return atom_map
 
 
-def to_map_ordered_geometry(molecule, atom_map):
+def get_map_ordered_geometry(molecule, atom_map):
     """
 
     Parameters

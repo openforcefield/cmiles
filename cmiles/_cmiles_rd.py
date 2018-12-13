@@ -5,7 +5,7 @@ from rdkit import Chem
 from .utils import _symbols, ANGSROM_2_BOHR
 
 
-def mol_from_json(symbols, connectivity, geometry):
+def mol_from_json(symbols, connectivity, geometry, permute_xyz=False):
     """
     Generate RDkit.Chem.Mol from QCSchema molecule specs.
     Parameters
@@ -51,8 +51,9 @@ def mol_from_json(symbols, connectivity, geometry):
         # Assign stereochemistry from coordinates
         from rdkit.Chem import rdmolops
         rdmolops.AssignStereochemistryFrom3D(molecule, confId=initial_conformer_id, replaceExistingTags=True)
-        # Add a tag to keep current order
-        molecule.SetProp("_json_geometry", '1')
+        if not permute_xyz:
+            # Add a tag to keep current order
+            molecule.SetProp("_json_geometry", '1')
 
     return molecule
 

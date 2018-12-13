@@ -7,7 +7,7 @@ import copy
 from .utils import ANGSROM_2_BOHR, _symbols
 
 
-def mol_from_json(symbols, connectivity, geometry):
+def mol_from_json(symbols, connectivity, geometry, permute_xyz=False):
     """
     Generate OEMol from QCSchema molecule specs
     Parameters
@@ -41,9 +41,10 @@ def mol_from_json(symbols, connectivity, geometry):
     molecule.SetCoords(oechem.OEFloatArray(geometry))
     molecule.SetDimension(3)
 
-    # Add tag that the geometry is from JSON and shouldn't be changed.
-    geom_tag = oechem.OEGetTag("json_geometry")
-    molecule.SetData(geom_tag, True)
+    if not permute_xyz:
+        # Add tag that the geometry is from JSON and shouldn't be changed.
+        geom_tag = oechem.OEGetTag("json_geometry")
+        molecule.SetData(geom_tag, True)
     oechem.OEDetermineConnectivity(molecule)
     oechem.OEFindRingAtomsAndBonds(molecule)
     oechem.OEPerceiveBondOrders(molecule)

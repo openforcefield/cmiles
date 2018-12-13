@@ -268,7 +268,8 @@ def test_connectivity(mapped_smiles, expected_table, toolkit):
 
 
 @pytest.mark.parametrize('toolkit, toolkit_name', list(zip(toolkits, toolkits_name)))
-def test_map_order_geometry(toolkit, toolkit_name):
+@pytest.mark.parametrize('permute', [True, False])
+def test_map_order_geometry(permute, toolkit, toolkit_name):
     """Test map ordered geometry"""
     hooh = {
         'symbols': ['H', 'O', 'O', 'H'],
@@ -281,7 +282,7 @@ def test_map_order_geometry(toolkit, toolkit_name):
         'name': 'HOOH',
         'connectivity': [[0, 1, 1], [1, 2, 1], [2, 3, 1]],
     }
-    mol = utils.load_molecule(hooh, toolkit=toolkit_name)
+    mol = utils.load_molecule(hooh, toolkit=toolkit_name, permute_xyz=permute)
     import cmiles
     if toolkit_name == 'openeye':
         mapped_smiles = cmiles.to_canonical_smiles_oe(mol, isomeric=True, explicit_hydrogen=True, mapped=True)
@@ -292,8 +293,50 @@ def test_map_order_geometry(toolkit, toolkit_name):
     symbols, geometry = toolkit.get_map_ordered_geometry(mol, atom_map)
 
     json_geom = np.asarray(hooh['geometry']).reshape(int(len(geometry)/3), 3)
-    geometry = np.asarray(geometry).reshape(int(len(geometry)/3), 3)
+    geometry_array = np.asarray(geometry).reshape(int(len(geometry)/3), 3)
 
     for m in atom_map:
         for i in range(3):
-            assert json_geom[atom_map[m]][i] == pytest.approx(geometry[m-1][i], 0.0000001)
+            assert json_geom[atom_map[m]][i] == pytest.approx(geometry_array[m-1][i], 0.0000001)
+    if not permute:
+        assert hooh['geometry'] == pytest.approx(geometry, 0.0000001)
+
+
+@pytest.mark.parametrize('toolkit, toolkit_name', list(zip(toolkits, toolkits_name)))
+def test_permute_json(toolkit, toolkit_name):
+    """Test permute json xyz, symbols and connectivity to match mapped smiles"""
+    molecule_ids = {'canonical_smiles': 'OO',
+                    'canonical_isomeric_smiles': 'OO',
+                    'canonical_isomeric_explicit_hydrogen_smiles': '[H]OO[H]',
+                    'canonical_explicit_hydrogen_smiles': '[H]OO[H]',
+                    'canonical_isomeric_explicit_hydrogen_mapped_smiles': '[H:3][O:1][O:2][H:4]',
+                    'unique_protomer_representation': 'OO',
+                    'unique_tautomer_representation': 'OO',
+                    'provenance': 'cmiles_v0.1.1+59.g0b7a12d.dirty_openeye_2018.Oct.b7',
+                    'standard_inchi': 'InChI=1S/H2O2/c1-2/h1-2H',
+                    'inchi_key': 'MHAJPDPJQMAIIY-UHFFFAOYSA-N',
+                    'molecular_formula': 'H2O2'}
+    hooh = {
+        'symbols': ['H', 'O', 'O', 'H'],
+        'geometry': [
+             1.84719633,  1.47046223,  0.80987166,
+             1.3126021,  -0.13023157, -0.0513322,
+            -1.31320906,  0.13130216, -0.05020593,
+            -1.83756335, -1.48745318,  0.80161212
+        ],
+        'name': 'HOOH',
+        'connectivity': [[0, 1, 1], [1, 2, 1], [2, 3, 1]],
+        'molecular_multiplicity': 1
+    }
+    mol = utils.mol_from_json(hooh, toolkit=toolkit_name)
+    atom_map = utils.get_atom_map(mol, '[H:3][O:1][O:2][H:4]')
+    permuted_hooh = utils.permute_qcschema(hooh, molecule_ids)
+
+    json_geom = np.asarray(hooh['geometry']).reshape(int(len(hooh['geometry'])/3), 3)
+    permuted_geom = np.asarray(permuted_hooh['geometry']).reshape(int(len(hooh['geometry'])/3), 3)
+
+    assert hooh['geometry'] != permuted_hooh['geometry']
+    for m in atom_map:
+        for i in range(3):
+            assert json_geom[atom_map[m]][i] == pytest.approx(permuted_geom[m-1][i], 0.0000001)
+

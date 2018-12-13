@@ -36,27 +36,27 @@ BOHR_2_ANGSTROM = 0.529177210
 ANGSROM_2_BOHR = 1. / BOHR_2_ANGSTROM
 
 
-def load_molecule(inp_molecule, toolkit='openeye'):
+def load_molecule(inp_molecule, toolkit='openeye', **kwargs):
     """
-    Load molecule. Input restrictive. Can use and isomeric SMILES or a JSON serialized molecule
+    Load molecule. Input is restrictive. Can use and isomeric SMILES or a JSON serialized molecule
 
     Parameters
     ----------
     inp_molecule: input molecule
         This can be either a SMILES with stereochemistry (isomeric SMILES) or a JSON serialized molecules.
         for the JSON molecule, the minimum fields needed are symbols, connectivity and geometry.
+    toolkit: str, optional, default openeye.
+        Which cheminformatics toolkit to use
 
     Returns
     -------
-    molecule: output molecule
-        If has license to OpenEye, will return an OpenEye molecule. Otherwise will return a RDKit molecule if input can
-        be parsed with RDKit.
+    molecule: oemol or rdkit molecule
     """
 
     # Check input
     if isinstance(inp_molecule, dict):
         # This is a JSON molecule.
-        molecule = mol_from_json(inp_molecule, toolkit=toolkit)
+        molecule = mol_from_json(inp_molecule, toolkit=toolkit, **kwargs)
 
     elif isinstance(inp_molecule, str):
         if toolkit == 'openeye' and has_openeye:
@@ -75,7 +75,7 @@ def load_molecule(inp_molecule, toolkit='openeye'):
     return molecule
 
 
-def mol_from_json(inp_molecule, toolkit='openeye'):
+def mol_from_json(inp_molecule, toolkit='openeye', **kwargs):
     """
     Load a molecule from QCSchema
     The input JSON should use QCSchema specs (https://molssi-qc-schema.readthedocs.io/en/latest/index.html#)
@@ -85,8 +85,11 @@ def mol_from_json(inp_molecule, toolkit='openeye'):
     ----------
     inp_molecule: dict
        Required keys are symbols, connectivity and/or geometry. If using RDKit as backend, must have connectivity.
-    backend: str, optional. Default openeye
+    toolkit: str, optional. Default openeye
         Specify which cheminformatics toolkit to use. Options are openeye and rdkit.
+    permute_xyz: bool, optional, default False
+        If False, will add flag to molecule such that the mapped SMILES retains the order of serialized geometry. If True,
+        mapped SMILES will be in canonical order and serialized geometry will have to be reordered.
 
     Returns
     -------
@@ -114,7 +117,7 @@ def mol_from_json(inp_molecule, toolkit='openeye'):
     else:
         raise ValueError("Only openeye and rdkit backends are supported")
 
-    molecule = mol_toolkit.mol_from_json(symbols, connectivity, geometry)
+    molecule = mol_toolkit.mol_from_json(symbols, connectivity, geometry, **kwargs)
 
     return molecule
 
@@ -181,15 +184,22 @@ def get_connectivity_table(molecule, atom_map):
     return toolkit.get_connectivity_table(molecule, inverse_map)
 
 
-def reorder_qcschema(json_mol, mapped_smiles):
-    pass
+def permute_qcschema(json_mol, molecule_ids, toolkit='openeye'):
+    """
 
-# ToDo: ordered geometry by map indices.
-# Inputs can be:
-#  1. qcschema and map smile
-#  2. oe or rd mol with geometry.
-#     a. mol can have map on the indices
-#     b. If mol does not have map, must supply mapped SMILES
+    Parameters
+    ----------
+    json_mol
+    molecule_ids
+
+    Returns
+    -------
+
+    """
+    molecule = mol_from_json(json_mol, toolkit=toolkit)
+    ordered_qcschema = to_map_ordered_qcschema(molecule, molecule_ids, json_mol['molecular_multiplicity'])
+
+    return ordered_qcschema
 
 
 def has_atom_map(molecule):

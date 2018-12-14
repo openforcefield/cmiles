@@ -195,28 +195,8 @@ def test_chiral_bond_exception(smiles, toolkit):
     if toolkit == 'rdkit':
         from rdkit import Chem
         mol = Chem.AddHs(mol)
-    assert utils.has_stereo_defined(mol) == True
-
-
-@pytest.mark.parametrize('toolkit, toolkit_name', list(zip(toolkits, toolkits_name)))
-@pytest.mark.parametrize("smiles, output", [('CN(C)C(=N)NC(=N)N', True),
-                                           ('COC1=CC(CN(C)C2=CC=C3N=C(N)N=C(N)C3=C2)=C(OC)C=C1', False),
-                                           ('[H][C@](C)(O)[C@@]([H])(N=C(O)[C@]1([H])C[C@@]([H])(CCC)CN1C)[C@@]1([H])O[C@]([H])(SC)[C@]([H])(O)[C@@]([H])(O)[C@@]1([H])O',
-                                            False),
-                                            ('N=CO', True)])
-def test_chiral_bond_exception_2(smiles, output, toolkit, toolkit_name):
-    """ Test bonds to ignore """
-    mol = utils.load_molecule(smiles, toolkit_name)
-    if toolkit_name == 'openeye':
-        oechem.OEAddExplicitHydrogens(mol)
-    if toolkit_name == 'rdkit':
-        mol = Chem.AddHs(mol)
-    ignore = False
-    for bond in mol.GetBonds():
-        ignore = toolkit._ignore_stereo_flag(bond)
-        if ignore:
-            break
-    assert ignore == output
+    with pytest.raises(ValueError):
+        utils.has_stereo_defined(mol)
 
 
 @pytest.mark.parametrize('toolkit, toolkit_name', list(zip(toolkits, toolkits_name)))

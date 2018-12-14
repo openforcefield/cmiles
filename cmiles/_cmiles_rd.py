@@ -4,6 +4,7 @@
 import rdkit as toolkit
 from rdkit import Chem
 from .utils import _symbols, ANGSROM_2_BOHR
+import warnings
 
 
 def mol_from_json(symbols, connectivity, geometry, permute_xyz=False):
@@ -287,36 +288,14 @@ def has_stereo_defined(molecule):
     Chem.FindPotentialStereoBonds(molecule)
     for bond in molecule.GetBonds():
         if bond.GetStereo() == Chem.BondStereo.STEREOANY:
-            if not _ignore_stereo_flag(bond):
-                unspec_db = True
-                problematic_bonds.append((bond.GetBeginAtom().GetSmarts(), bond.GetSmarts(),
+            unspec_db = True
+            problematic_bonds.append((bond.GetBeginAtom().GetSmarts(), bond.GetSmarts(),
                                                 bond.GetEndAtom().GetSmarts()))
     if unspec_chiral or unspec_db:
         raise ValueError("Stereochemistry is unspecified. Problematic atoms {}, problematic bonds {}".format(
                 problematic_atoms, problematic_bonds))
     else:
         return True
-
-
-def _ignore_stereo_flag(bond):
-    ignore = False
-    beg = bond.GetBeginAtom()
-    end = bond.GetEndAtom()
-
-    if (beg.GetAtomicNum() == 7) and (end.GetAtomicNum() == 6) and (bond.GetBondType() == Chem.BondType.DOUBLE):
-        for a in beg.GetNeighbors():
-            if a != end and a.GetAtomicNum() == 1:
-                # This is a C=NH bond and should be ignored when flagged
-                ignore = True
-                break
-
-    if (beg.GetAtomicNum() == 6) and (end.GetAtomicNum() == 7) and (bond.GetBondType() == Chem.BondType.DOUBLE):
-        for a in end.GetNeighbors():
-            if a != beg and a.GetAtomicNum() == 1:
-                # This is a C=NH bond and should be ignored when flagged
-                ignore = True
-                break
-    return ignore
 
 
 def has_atom_map(molecule):

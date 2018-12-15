@@ -8,24 +8,14 @@ toolkits = list()
 toolkits_name = list()
 if utils.has_rdkit:
     from cmiles import _cmiles_rd
+    from rdkit import Chem
     toolkits.append(_cmiles_rd)
     toolkits_name.append('rdkit')
 if utils.has_openeye:
     from cmiles import _cmiles_oe
+    from openeye import oechem
     toolkits.append(_cmiles_oe)
     toolkits_name.append('openeye')
-
-rdkit_missing = False
-try:
-    from rdkit import Chem
-except ImportError:
-    rdkit_missing = True
-
-try:
-    from openeye import oechem
-    openeye_missing = False
-except ImportError:
-    openeye_missing = True
 
 using_rdkit = pytest.mark.skipif(not utils.has_rdkit, reason="Cannot run without RDKit")
 using_openeye = pytest.mark.skipif(not utils.has_openeye, reason="Cannot run without OpenEye")
@@ -107,7 +97,7 @@ def test_has_stereochemistry(input1, input2, toolkit_name):
     if toolkit_name == 'rdkit':
         from rdkit import Chem
         mol = Chem.AddHs(mol)
-    with pytest.raises(ValueError):
+    with pytest.warns(UserWarning):
         utils.has_stereo_defined(mol)
 
 @using_openeye
@@ -195,7 +185,7 @@ def test_chiral_bond_exception(smiles, toolkit):
     if toolkit == 'rdkit':
         from rdkit import Chem
         mol = Chem.AddHs(mol)
-    with pytest.raises(ValueError):
+    with pytest.warns(UserWarning):
         utils.has_stereo_defined(mol)
 
 

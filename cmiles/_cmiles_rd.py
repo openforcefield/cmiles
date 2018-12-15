@@ -292,8 +292,9 @@ def has_stereo_defined(molecule):
             problematic_bonds.append((bond.GetBeginAtom().GetSmarts(), bond.GetSmarts(),
                                                 bond.GetEndAtom().GetSmarts()))
     if unspec_chiral or unspec_db:
-        raise ValueError("Stereochemistry is unspecified. Problematic atoms {}, problematic bonds {}".format(
+        warnings.warn("Stereochemistry is unspecified. Problematic atoms {}, problematic bonds {}".format(
                 problematic_atoms, problematic_bonds))
+        return False
     else:
         return True
 

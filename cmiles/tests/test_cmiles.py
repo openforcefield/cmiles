@@ -6,23 +6,27 @@ Unit and regression test for the cmiles package.
 
 import pytest
 import sys
-from .utils import get_fn, get_smiles_lists, get_smiles_list
+import numpy as np
+from .utils import get_fn, get_smiles_lists
 import cmiles
 
-rdkit_missing = False
-try:
+toolkits = list()
+toolkits_name = list()
+if cmiles.utils.has_rdkit:
+    from cmiles import _cmiles_rd
     from rdkit import Chem
-except ImportError:
-    rdkit_missing = True
 
-openeye_missing = False
-try:
+    toolkits.append(_cmiles_rd)
+    toolkits_name.append('rdkit')
+
+if cmiles.utils.has_openeye:
+    from cmiles import _cmiles_oe
     from openeye import oechem
-except ImportError:
-    openeye_missing = True
+    toolkits.append(_cmiles_oe)
+    toolkits_name.append('openeye')
 
-using_rdkit = pytest.mark.skipif(rdkit_missing, reason="Cannot run without RDKit")
-using_openeye = pytest.mark.skipif(openeye_missing, reason="Cannot run without OpenEye")
+using_rdkit = pytest.mark.skipif(not cmiles.utils.has_rdkit, reason="Cannot run without RDKit")
+using_openeye = pytest.mark.skipif(not cmiles.utils.has_openeye, reason="Cannot run without OpenEye")
 
 
 def test_cmiles_imported():
@@ -694,3 +698,33 @@ def test_unique_protomers(state1, state2):
                          ])
 def test_unique_tautomers(state1, state2):
     _test_unique_tautomer(state1, state2)
+
+
+@pytest.mark.parametrize('toolkit', toolkits_name)
+def test_permute_xyz(toolkit):
+
+    hooh = {
+        'symbols': ['H', 'O', 'O', 'H'],
+        'geometry': [
+             1.84719633,  1.47046223,  0.80987166,
+             1.3126021,  -0.13023157, -0.0513322,
+            -1.31320906,  0.13130216, -0.05020593,
+            -1.83756335, -1.48745318,  0.80161212
+        ],
+        'name': 'HOOH',
+        'connectivity': [[0, 1, 1], [1, 2, 1], [2, 3, 1]],
+        'molecular_multiplicity': 1
+    }
+
+    permuted_hooh = cmiles.to_molecule_id(hooh, permute_xyz=True)
+
+    assert hooh['geometry'] != permuted_hooh['geometry']
+
+    mol = cmiles.utils.mol_from_json(hooh, toolkit=toolkit)
+    atom_map = cmiles.utils.get_atom_map(mol, permuted_hooh['identifiers']['canonical_isomeric_explicit_hydrogen_mapped_smiles'])
+
+    json_geom = np.asarray(hooh['geometry']).reshape(int(len(hooh['geometry'])/3), 3)
+    permuted_geom = np.asarray(permuted_hooh['geometry']).reshape(int(len(hooh['geometry'])/3), 3)
+    for m in atom_map:
+        for i in range(3):
+            assert json_geom[atom_map[m]][i] == pytest.approx(permuted_geom[m-1][i], 0.0000001)

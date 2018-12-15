@@ -122,8 +122,11 @@ def to_molecule_id(molecule_input, canonicalization='openeye', strict=True, **kw
 
     try:
         if kwargs['permute_xyz']:
-            permuted_json_mol = cmiles.utils.permute_qcschema(molecule_input, molecule_ids, canonicalization)
+            permuted_json_mol = cmiles.utils.permute_qcschema(molecule_input, molecule_ids, toolkit=canonicalization)
             return permuted_json_mol
+        else:
+            return molecule_ids
+
     except KeyError:
         return molecule_ids
 

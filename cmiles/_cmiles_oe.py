@@ -335,11 +335,12 @@ def has_stereo_defined(molecule):
                 bond_order = bond.GetOrder()
                 problematic_bonds.append((a1_idx, a1_s, a2_idx, a2_s, bond_order))
     if unspec_chiral or unspec_db:
-        raise ValueError("Stereochemistry is unspecified. Problematic atoms {}, problematic bonds {}".format(
+        warnings.warn("Stereochemistry is unspecified. Problematic atoms {}, problematic bonds {}".format(
                 problematic_atoms,
                 problematic_bonds))
-
-    return True
+        return False
+    else:
+        return True
 
 
 def has_atom_map(molecule):

@@ -716,7 +716,7 @@ def test_permute_xyz(toolkit):
         'molecular_multiplicity': 1
     }
 
-    permuted_hooh = cmiles.to_molecule_id(hooh, permute_xyz=True)
+    permuted_hooh = cmiles.to_molecule_id(hooh, toolkit, permute_xyz=True)
 
     assert hooh['geometry'] != permuted_hooh['geometry']
 

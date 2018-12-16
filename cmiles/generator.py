@@ -143,7 +143,7 @@ def to_inchi_and_key(molecule):
 
     # Todo can use the InChI code directly here
     # Make sure molecule is rdkit mol
-    if not isinstance(molecule, rd.Chem.Mol):
+    if has_rdkit and not isinstance(molecule, rd.Chem.Mol):
         molecule = rd.Chem.MolFromSmiles(oe.oechem.OEMolToSmiles(molecule))
 
     inchi = rd.Chem.MolToInchi(molecule)

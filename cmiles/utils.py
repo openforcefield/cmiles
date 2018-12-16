@@ -126,14 +126,23 @@ def mol_from_json(inp_molecule, toolkit='openeye', **kwargs):
 
 def mol_to_smiles(molecule, **kwargs):
     """
+    Generate canonical smiles from molecule
 
     Parameters
     ----------
-    molecule
-    kwargs
+    molecule: oechem.OEMol or rdkit.Chem.Mol
+    ** isomeric: bool, optional, default True
+        If False, SMILES will not include stereo information
+    ** explicit_hydrogen: bool, optional, default True
+        If True, SMILES will have explicit hydrogen.
+    ** mapped: bool, optional, default True
+        If True, SMILES will have map indices
+            example O=O will be '[O:1]=[O:2]'
+
 
     Returns
     -------
+    smiles: str
 
     """
     molecule = copy.deepcopy(molecule)
@@ -182,15 +191,24 @@ def mol_to_hill_molecular_formula(molecule):
 
 def mol_to_map_ordered_qcschema(molecule, molecule_ids, multiplicity=1):
     """
+    Genereate JSON serialize following qc-schema specs (https://molssi-qc-schema.readthedocs.io/en/latest/index.html#)
+    Geometry, symbols and connectivity table ordered according to map indices in mapped
 
     Parameters
     ----------
-    molecule
-    molecule_ids
-    multiplicity
+    molecule:
+        oechem.OEMol or rdkit.Chem.Mol
+        molecuel must have a conformer.
+    molecule_ids: dict
+        cmiles generated molecular ids.
+    multiplicity: int, optional, defualt is 1
+        multiplicity of molecule
 
     Returns
     -------
+    qcschema_mol: dict
+        JSON serialized molecule following qc-schema specs
+        https://molssi-qc-schema.readthedocs.io/en/latest/index.html#
 
     """
     toolkit = _set_toolkit(molecule)
@@ -209,14 +227,19 @@ def mol_to_map_ordered_qcschema(molecule, molecule_ids, multiplicity=1):
 
 def get_atom_map(molecule, mapped_smiles):
     """
+    Get mapping of map index -> atom index
 
     Parameters
     ----------
-    molecule
-    mapped_smiles
+    molecule:
+        oechem.OEMol or rdkit.Chem.Mol
+    mapped_smiles: str
+        explicit hydrogen mapped SMILES
 
     Returns
     -------
+    atom_map: dict
+        dictionary mapping {map_index: atom_index}
 
     """
     toolkit = _set_toolkit(molecule)
@@ -226,14 +249,20 @@ def get_atom_map(molecule, mapped_smiles):
 
 def get_connectivity_table(molecule, atom_map):
     """
+    Generate connectivity table
 
     Parameters
     ----------
-    molecule
-    atom_map
+    molecule:
+        oechem.Mol or rdkit.Chem.Mol
+    atom_map: dict
+        map of map_idx : atom_idx
 
     Returns
     -------
+    list: list of lists
+        lists of atoms bonded and the bond order
+        [[map_idx_1, map_idx_2, bond_order] ...]
 
     """
 
@@ -244,14 +273,22 @@ def get_connectivity_table(molecule, atom_map):
 
 def permute_qcschema(json_mol, molecule_ids, **kwargs):
     """
+    permute geometry and symbols to correspond to map indices on mapped SMILES
 
     Parameters
     ----------
-    json_mol
-    molecule_ids
+    json_mol: dict
+        JSON serialized molecule
+        required fields: symbols, geometry, connectivity and multiplicity
+    molecule_ids: dict
+        cmiles generated molecular ids
 
     Returns
     -------
+    ordered_qcschema: dict
+        JSON serialized molecule. geometry, symbols and connectivity ordered according to mapped indices on mapped
+        SMILES.
+        Also includes `identifiers` field with cmiles generated identifiers.
 
     """
     molecule = mol_from_json(json_mol, **kwargs)
@@ -262,13 +299,16 @@ def permute_qcschema(json_mol, molecule_ids, **kwargs):
 
 def has_atom_map(molecule):
     """
+    Check if molecule has atom map indices
 
     Parameters
     ----------
-    molecule
+    molecule:
+        oechem.Mol or rdkit.Chem.Mol
 
     Returns
     -------
+    True or False
 
     """
     toolkit = _set_toolkit(molecule)
@@ -277,14 +317,11 @@ def has_atom_map(molecule):
 
 def remove_atom_map(molecule):
     """
-    Remove atom map from molecule.
-    This is done for several reasons such as the
+    Remove atom map from molecule in place
     Parameters
     ----------
     molecule
-
-    Returns
-    -------
+        oechem.OEMol or rdkit.Chem.Mol
 
     """
     toolkit = _set_toolkit(molecule)
@@ -293,16 +330,18 @@ def remove_atom_map(molecule):
 
 def has_stereo_defined(molecule):
     """
-    ToDo check for incorrect steroe (OEMDLHasIncorrectBondStereo)
-
+    Checks if molecule has all stereo defined.
+    Note:
+    This does not check if all chirality or bond stereo are consistent. The best way to check is to try to generate a
+    3D conformer. If stereo information is inconsistent, this will fail.
     Parameters
     ----------
-    molecule
-    backend
+    molecule:
+        oechem.OEMol or rdkit.Chem.Mol
 
     Returns
     -------
-
+    True if all stereo defined, False otherwise
     """
     toolkit = _set_toolkit(molecule)
     return toolkit.has_stereo_defined(molecule)
@@ -310,21 +349,40 @@ def has_stereo_defined(molecule):
 
 def has_explicit_hydrogen(molecule):
     """
-    Check if molecule has explicit hydrogen. In OpenEye, molecules created from explicit hydrogen SMILES will have
-    explicit hydrogen.
+    Check if molecule has explicit hydrogen.
+    Note:
+    In OpenEye, molecules created from explicit hydrogen SMILES will have explicit hydrogen.
+    For rdkit molecules created from explicit hydrogen SMILES, atom.GetNumExplictHs() will return that number, but
+    the molecule will not have explicit H unless mol_h = Chem.AddHs(mol) is used.
+
     Parameters
     ----------
-    molecule
+    molecule:
+        oechem.OEMol or rdkit.Chem.Mol
 
     Returns
     -------
-
+    True if has all explicit H. False otherwise.
     """
     toolkit = _set_toolkit(molecule)
     return toolkit.has_explicit_hydrogen(molecule)
 
 
 def get_charge(molecule):
+    """
+    Get charge state of molecule
+
+    Parameters
+    ----------
+    molecule:
+        oechem.OEMol or rdkit.Chem.Mol
+
+    Returns
+    -------
+    charge: int
+        charge of molecule
+
+    """
 
     charge = 0
     for atom in molecule.GetAtoms():
@@ -333,6 +391,19 @@ def get_charge(molecule):
 
 
 def _set_toolkit(molecule):
+    """
+    Set toolkit to use by checking molecule instance and if the toolkit is installed
+
+    Parameters
+    ----------
+    molecule:
+        oechem.OEMol or rdkit.Chem.Mol
+
+    Returns
+    -------
+    toolkit: module
+        either cmiles._cmiles_oe or cmiles._cmiles_rd
+    """
 
     if has_openeye and isinstance(molecule, (oechem.OEMol, oechem.OEMol, oechem.OEGraphMol)):
         import cmiles._cmiles_oe as toolkit

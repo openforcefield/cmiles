@@ -14,7 +14,7 @@ if has_rdkit:
 
 def to_molecule_id(molecule_input, canonicalization='openeye', strict=True, **kwargs):
     """
-    Generate a dictionary of canonical SMILES.
+    Generate a dictionary of canonical identifiers
 
     This dictionary contains:
     1. canonical SMILES
@@ -26,29 +26,17 @@ def to_molecule_id(molecule_input, canonicalization='openeye', strict=True, **kw
     7. Standard InChI key
     8. unique protomer. This is generated with OpenEye so will only be returned if the user has openeye installed and
     an openeye license.
+    9. standardized tautomer. This is generated with RDKit.
+    10. Hill molecular formula
+    11. provenance:  the version of cmiles and toolkits used.
 
     The map index on the mapped SMILES is the rank order of the atoms. This SMILES can be used as a SMARTS query for
     a molecule generated from any SMILES representing the same molecule. Using a substrucutre search, you can find the
     mapping of the atom index to the map index in the mapped SMILES. This can be used to ensure all atoms in the same
     molecule have the same map indices.
 
-    For example, methanol (`CO`) will become `[H:3][C:1]([H:4])([H:5])[O:2][H:6]`. Using substructure search on any
-    methanol openeye or rdkit molecule, you will get a mapping from the atom map to the atom index.
-
-    Below is some code using OpenEye to get the mapping:
-
-    from openeye import oechem
-
-    # Set up the substructure search
-    ss = oechem.OESubSearch(mapped_smiles)
-    oechem.OEPrepareSearch(molecule, ss)
-    ss.SetMaxMatches(1)
-
-    atom_map = {}
-    for match in matches:
-        for ma in match.GetAtoms():
-            atom_map[ma.pattern.GetMapIdx()] = ma.target.GetIdx()
-
+    The utils moldule include functions, such as get_atom_map and mol_to_mapped_ordered_qcschema to get the atom map and
+    generate a qcschema() molecule with the geometry and symbols ordered according to the mapped SMILES.
 
     The default option uses OpenEye canonicalization to generate these SMILES, but you can also use rdkit.
 
@@ -56,20 +44,27 @@ def to_molecule_id(molecule_input, canonicalization='openeye', strict=True, **kw
     Parameters
     ----------
     molecule: The input molecule can be a json serialized molecule or an isomeric SMILES.
-              The serialized molecule must contain the following fields: symbols, xyz coordinates and a connectivity table.
-              If a SMILES string is provied, it must contain stereochemistry information.
+              The serialized molecule must contain the following fields: symbols, geometry and a connectivity table.
+              see QCSchema specs: https://molssi-qc-schema.readthedocs.io/en/latest/index.html#
+              If a SMILES string is provided, it must contain stereochemistry information.
     canonicalization: str, optional, default 'openeye'
-        The canonicalization backend to use for generating SMILES. Choice of 'openeye' or 'rdkit'.
-        The canonicalization algorithms are different so the output will be different.
+        Different toolkits have different canonicalization algorithms so the canonical SMILES will be different depending
+        on the toolkit used. Currently, cmiles supports `openeye` and `rdkit`
         The mapping will also be different.
     strict: bool, optional. Default True
         If true, will raise an exception if SMILES is missing explicit H.
+    ** permute_xyz: bool, optional, default False
+        Only use if input molecule is in QCSchema format.
+        If True, the geometry will be permuted to reflect the canononical
+        atom order in the mapped SMILES. This function will return the permuted QCSchema. cmiles identifiers will be in
+        the `identifiers` field
+        If False, the map indices in the mapped SMILES will reflect the order of the atoms in the input QCSchema.
 
     Returns
     -------
     cmiles: dict of identifiers
 
-        The provenance key maps to the cmiles version and openeye or rdkit version used.
+        If `permute_xyz`, will return permuted qcschema with cmiles identifiers in `identifiers` field.
 
     """
     # check input and convert to oe or rdkit mol
@@ -132,6 +127,19 @@ def to_molecule_id(molecule_input, canonicalization='openeye', strict=True, **kw
 
 
 def to_inchi_and_key(molecule):
+    """
+    Generate inchi and inchikey. Uses RDKit which uses the inchi API
+
+    Parameters
+    ----------
+    molecule: rdkit.Chem.Mol
+        If an oechem.OEMol is given, will convert it to an rdkit.Chem.Mol
+
+    Returns
+    -------
+    tuple (inchi, inchi_key)
+
+    """
 
     # Todo can use the InChI code directly here
     # Make sure molecule is rdkit mol
@@ -155,6 +163,20 @@ def to_iupac(molecule):
 
 
 def get_unique_protomer(molecule):
+    """
+    Generate unique protomer for all tuatomers and charge states of the moelcule.
+    Requires openeye license.
+
+    Parameters
+    ----------
+    molecule: oechem.OEMol
+        Will convert rdkit.Chem.Mol to oechem.OEMol if openeye is installed and license is valid
+
+    Returns
+    -------
+    unique_protomer: str
+
+    """
 
     molecule = deepcopy(molecule)
     # This only works for OpenEye

@@ -1,0 +1,39 @@
+C[C@@]12CC3C[C@@](C1)(CC(C3)(C2)N)C Memantine
+CC1=C(CCC(O)=O)C2=CC3=C(CCC(O)=O)C(C)=C4C=C5N6C(=CC7=C(C=O)C(C)=C8C=C1N2[Fe]6(N34)N78)C(C)=C5C=C Clorocruoro Hem
+c1nc2n(cnc2c(n1)N)[C@@H]3O[C@@H]([C@H]([C@H]3O)O)CO[P@@](=O)(OP(=O)(O[P@@](=O)(OC[C@H]4O[C@H]([C@@H]([C@@H]4O)O)n5c6ncnc(c6nc5)N)O)O)O Bis(Adenosine)-5'-Triphosphate
+C1=CC(=O)N(C1=O)CCC23[C@@H]4[Fe]2567891([C@@H]4[C@H]5[C@@H]63)C2C7C8C9C12 N-(2-Ferrocenylethyl)Maleimide
+c1nc2n(cnc2c(n1)N)[C@@H]3O[C@@H]([C@H]([C@H]3O)O)CO[P@@](=O)(O[P@@](=O)(OP(=O)(O[P@@](=O)(O[P@@](=O)(OC[C@H]4O[C@H]([C@@H]([C@@H]4O)O)n5c6ncnc(c6nc5)N)O)O)O)O)O Bis(Adenosine)-5'-Pentaphosphate
+C1[C@H]2C3=C([C@@H]4[C@@H](O2)Nc5c(c(=O)[nH]c(n5)N)N4)S[W]6(S3)SC7=C(S6)[C@H]8[C@H](Nc9c(c(=O)[nH]c(n9)N)N8)O[C@@H]7CO[P@@](=O)(O[Mg]O[P@@](=O)(O1)[O-])[O-] cofactor
+CCc1c(c2/cc\3/nc(/cc/4\c(c(/c(/[nH]4)c/c5n/c(c/c1n2C)/C(=C5CC)C)C)CCC(=O)O)C(=C3C)CCC(=O)O)C N-Methylmesoporphyrin
+CC1=C(CCC(O)=O)C2=CC3=C(CCC(O)=O)C(C)=C4C=C5N6C(=CC7=C(C=C)C(C)=C8C=C1N2[Co]6(N34)N78)C(C)=C5C=C Protoporphyrin Ix Containing Co
+CCC1=C2C=C3N4C(=CC5=C(C)C(CCC(O)=O)=C6C=C7N8C(=CC(N2[Fe]48N56)=C1C)C(C)=C7CCC(O)=O)C(C=C)=C3C Hybrid Between B and C Type Hemes (Protoporphyrin Ixcontaining Fe)
+[H]N([H])C1=NC=NC2=C1N=CN2[C@@H]1O[C@H](CO[W](O)(=O)O[W](O)(O)=O)[C@@H](O)[C@H]1O Adenosine-5'-Ditungstate
+CC1=C(CCC(O)=O)C2=CC3=C(CCC(O)=O)C(C)=C4C=C5N6C(=CC7=C(C=C)C(C=C)=C8C=C1N2[Fe]6(N34)N78)C(C=C)=C5C=C 1,3-Dedimethyl-1,3-Divinyl Heme
+[H]/C(=C\c1c(c2n3c1C(=C4[C@H]([C@@H](C5=Cc6c(c(c7n6[Fe+2]3(N54)n8c(=C2)c(c(c8=C7)CCC(=O)O)C)CCC(=O)O)C)/C=C(\[H])/[H])C)c9ccccc9)C)/[H] 12-Phenylheme
+c1c(cc(cc1/C(=N/CCCN2CCN(CC2)CCCNc3c(=O)c(=O)c3NCCCOCCOCCOCCC/N=C(\OCC(N)CO/C(=N\CCCOCCOCCOCCCNc4c(=O)c(=O)c4NCCCN5CCN(CC5)CCC/N=C(\O)/c6cc(cc(c6)N(=O)=O)O[C@@H]7O[C@@H]([C@@H]([C@@H]([C@@H]7O)O)O)CO)/O)/O)/O)O[C@H]8O[C@@H]([C@@H]([C@@H]([C@H]8O)O)O)CO)N(=O)=O BV4
+c1c(cc(cc1/C(=N/CCCN2CCN(CC2)CCC/N=C(\OCC(N)CO/C(=N\CCCN3CCN(CC3)CCC/N=C(\O)/c4cc(cc(c4)N(=O)=O)O[C@@H]5O[C@@H]([C@@H]([C@@H]([C@@H]5O)O)O)CO)/O)/O)/O)O[C@H]6O[C@@H]([C@@H]([C@@H]([C@H]6O)O)O)CO)N(=O)=O BV2
+CC1=C(CCC(O)=O)C2=CC3=C(CCC(O)=O)C(C)=C4C=C5N6C(=CC7=C(C=C)C(C)=C8C=C1N2[Fe++]6(N34)N78)C(C)=C5C=C Mesoheme
+CC1=C[C@@H]([N-]CC1)[C@@H]2[N-]CC[C@@H](C2)C[C@H]3[C@@H]([C@H]([C@H]([C@@H]([C@@H]3F)F)[C@H]4[C@@H]([C@@H](C([C@@H]([C@@H]4F)F)N[C@H]5[C@H]6C[C@H]7C[C@@H]5C[C@@H](C6)C7)F)F)F)F.C1C/C(=C\2/[N-]CCCC2)/[N-]CC1.C1C=C[N-]/C(=C/2\[N-]CCC=C2)/C1.[Ru+8] (Ii)
+c1c(cc(cc1/C(=N/CCCN2CCN(CC2)CCCNc3c(=O)c(=O)c3NCC/N=C(\OCC(N)CO/C(=N\CCNc4c(=O)c(=O)c4NCCCN5CCN(CC5)CCC/N=C(\O)/c6cc(cc(c6)N(=O)=O)O[C@@H]7O[C@@H]([C@@H]([C@@H]([C@@H]7O)O)O)CO)/O)/O)/O)O[C@H]8O[C@@H]([C@@H]([C@@H]([C@H]8O)O)O)CO)N(=O)=O BV3
+CC1=C(CCC(O)=O)C2=CC3=C(CCC(O)=O)C(C)=C4N3[Zn]35N2C1=CC1=C(C=C)C(C)=C(C=C2N3C(C(C)=C2C=C)=C4O)N51 Zn(Ii)-(20-Oxo-Protoporphyrin Ix)
+Cc1c2cc3[n+]4c(cc5c(c(c6n5[Fe-2]47n2c(c1CCC(=O)O)cc8[n+]7c(c6)C(=C8CCC(=O)O)C)C)[C@H](C)S)C(=C3[C@H](C)S)C C
+CC(=O)C1=C(C)C2=CC3=C(C(O)=C)C(C)=C4C=C5N6C(=CC7=C(CCC(O)=O)C(C)=C8C=C1N2[Fe]6(N78)N34)C(CCC(O)=O)=C5C Diacetyldeuteroheme
+CC1=C(CCC(O)=O)C2=CC3=C(CCC(O)=O)C(C)=C4C=C5[N+]6=C(C=C7N8C(C=C1N2[Fe]68N34)=C([O-])[C@]7(C)CC(O)=O)C(=O)[C@]5(C)CC(O)=O Heme D
+CC1=C(C=C)C2=CC3=[N+]4C(=CC5=C(C)C(CCC(O)=O)=C6N5[Fe]44N2C1=CC1=[N+]4C(C(CCC(O)=O)=C1C)=C6C1=CC=CC=C1)C(C=C)=C3C 2-Phenylheme
+c1nc2c(n1[C@H]3[C@@H]([C@@H]([C@H](O3)CO[P@@](=O)(O)OP(=O)(O)O[P@@](=O)(O)OC[C@@H]4[C@H]([C@H]([C@@H](O4)n5cnc6c5[nH]c(nc6=O)N)O)O)O)O)[nH]c(nc2=O)N Diguanosine-5'-Triphosphate
+O[V](=O)(O[V]([O-])=O)O[V](=O)=O Trivanadate
+CCC1=C2C=C3N4C(=CC5=C(C)C(CCC(O)=O)=C6C=C7N8C(=CC(N2[Fe]48N56)=C1C)C(C)=C7CCC(O)=O)C(=O)[C@@]3(C)CC Fe-Mesopone
+CC1=CC2=CC3=[N+]4C(=CC5=C(C=C)C(C)=C6OC7=C(C=C)C(C)=C8C=C1N2[Fe]4(N56)N78)C(C)=C3CCC(O)=O Verdoheme
+C([C@H]([C@@H]1[C@H]2[C@@H](O[Sb](O2)(O1)(O)O[Sb]34(O[C@@H]([C@H](O3)[C@@H](CO)O)[C@@H](O4)C(=O)[O-])[O-])C(=O)[O-])O)O.O.O.O.O.O.O.O.O.O.[Na+].[Na+].[Na+] stibogluconate
+C1[C@@H]2C[C@@H]2N([C@@H]1C#N)C(=O)[C@H](C34C[C@H]5C[C@@H](C3)CC(C5)(C4)O)N Saxagliptin
+C1C[N+]2(CC[N@@+]3([Gd-]24[N@+]1(CC[N+]4(CC3)[C@@H](CO)[C@H](CO)O)CC(=O)[O-])CC(=O)[O-])CC(=O)[O-] Gadobutrol
+CCc1ccccc1/N=C(\O)/Oc2ccc3c(c2)[C@]4(CCN(=O)([C@H]4[N@]3C)C)C 2-ETHYLPHENYLCARBAMATE
+CCCC[C@@H](CC)C[N@@]1CC(C[N@](C1)C[C@@H](CC)CCCC)(C)N Hexetidine
+[H][C@](CO)(C(=O)O[C@]1([H])C[C@]2([H])CC[C@]([H])(C1)[N+]2(C)CC(=O)C1=CC=C(C=C1)C1=CC=CC=C1)C1=CC=CC=C1 Fentonium
+[H][C@](CO)(C(=O)O[C@@]1([H])C[C@@]2([H])[C@]3([H])O[C@]3([H])[C@@]([H])(C1)[N+]2(C)CC1CC1)C1=CC=CC=C1 Cimetropium
+CCCC[N+]1(C)[C@H]2C[C@@H](C[C@@H]1[C@H]1O[C@@H]21)OC(=O)[C@H](CO)C1=CC=CC=C1 Butylscopolamine
+NC(=O)C1=CN=C2NC=CC2=C1N[C@H]1[C@H]2CC3C[C@@H]1C[C@@](O)(C3)C2 Peficitinib
+CC[N+]1(C)[C@H]2C[C@@H](C[C@@H]1[C@H]1O[C@@H]21)OC(=O)[C@H](CO)C1=CC=CC=C1 Oxitropium
+C([C@@H](CO)O)NC(=O)c1c(c(c(c(c1I)N(CC(CN(C=O)c2c(c(c(c(c2I)C(=O)NC[C@H](CO)O)I)C(=O)NC[C@@H](CO)O)I)O)C=O)I)C(=O)NC[C@@H](CO)O)I Ioforminol
+CCCN1C2=C(NC(=N2)C23C[C@@H]4CC2C[C@H](C3)C4)C(=O)N(CCC)C1=O Rolofylline
+c1cc(ccc1C23C[C@H]4C[C@@H](C2)CC(C4)(C3)C(=O)NCc5ccncc5)Cl ABC-294640

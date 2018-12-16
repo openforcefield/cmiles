@@ -74,9 +74,9 @@ or RDKit.
 `cmiles.utils` provides functions to generate atom maps and map ordered geometries.
 
 ### Dependencies
-One of the following cheminformatics toolkits:
-`*` openeye
-`*` rdkit
+One of the following cheminformatics toolkits:  
+* openeye  
+* rdkit  
 
 ### Copyright
 

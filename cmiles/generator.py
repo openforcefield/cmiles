@@ -2,27 +2,20 @@
 Generate canonical, isomeric, explicit hydrogen, mapped SMILES
 
 """
-import warnings
-import collections
 from copy import deepcopy
 import cmiles
+import warnings
+from .utils import has_openeye, has_rdkit
 
-HAS_OPENEYE = True
-try:
+if has_openeye:
     import openeye as oe
-except ImportError:
-    HAS_OPENEYE = False
-
-HAS_RDKIT = True
-try:
+if has_rdkit:
     import rdkit as rd
-except ImportError:
-    HAS_RDKIT = False
 
 
-def to_molecule_id(molecule, canonicalization='openeye'):
+def to_molecule_id(molecule_input, canonicalization='openeye', strict=True, **kwargs):
     """
-    Generate a dictionary of canonical SMILES.
+    Generate a dictionary of canonical identifiers
 
     This dictionary contains:
     1. canonical SMILES
@@ -30,103 +23,134 @@ def to_molecule_id(molecule, canonicalization='openeye'):
     3. canonical, explicit hydrogen SMILES
     4. canonical, isomeric, explicit hydrogen SMILES
     5. canonical, isomeric, explicit hydrogen, mapped SMILES
+    6. Standard InChI
+    7. Standard InChI key
+    8. unique protomer. This is generated with OpenEye so will only be returned if the user has openeye installed and
+    an openeye license.
+    9. standardized tautomer. This is generated with RDKit.
+    10. Hill molecular formula
+    11. provenance:  the version of cmiles and toolkits used.
 
     The map index on the mapped SMILES is the rank order of the atoms. This SMILES can be used as a SMARTS query for
     a molecule generated from any SMILES representing the same molecule. Using a substrucutre search, you can find the
     mapping of the atom index to the map index in the mapped SMILES. This can be used to ensure all atoms in the same
     molecule have the same map indices.
 
-    For example, methanol (`CO`) will become `[H:3][C:1]([H:4])([H:5])[O:2][H:6]`. Using substructure search on any
-    methanol openeye or rdkit molecule, you will get a mapping from the atom map to the atom index.
-
-    Below is some code using OpenEye to get the mapping:
-
-    from openeye import oechem
-
-    # Set up the substructure search
-    ss = oechem.OESubSearch(mapped_smiles)
-    oechem.OEPrepareSearch(molecule, ss)
-    ss.SetMaxMatches(1)
-
-    atom_map = {}
-    for match in matches:
-        for ma in match.GetAtoms():
-            atom_map[ma.pattern.GetMapIdx()] = ma.target.GetIdx()
-
+    The utils moldule include functions, such as get_atom_map and mol_to_mapped_ordered_qcschema to get the atom map and
+    generate a qcschema() molecule with the geometry and symbols ordered according to the mapped SMILES.
 
     The default option uses OpenEye canonicalization to generate these SMILES, but you can also use rdkit.
 
 
     Parameters
     ----------
-    molecule: openeye or rdkit molecule to generate canonical SMILES.
-        Use an openeye molecule if using openey canonicalization and rdkit molecule if you are using rdkit canonicalization
-
+    molecule: The input molecule can be a json serialized molecule or an isomeric SMILES.
+              The serialized molecule must contain the following fields: symbols, geometry and a connectivity table.
+              see QCSchema specs: https://molssi-qc-schema.readthedocs.io/en/latest/index.html#
+              If a SMILES string is provided, it must contain stereochemistry information.
     canonicalization: str, optional, default 'openeye'
-        The canonicalization backend to use for generating SMILES. Choice of 'openeye' or 'rdkit'.
-        The canonicalization algorithms are different so the output will be different.
+        Different toolkits have different canonicalization algorithms so the canonical SMILES will be different depending
+        on the toolkit used. Currently, cmiles supports `openeye` and `rdkit`
+        The mapping will also be different.
+    strict: bool, optional. Default True
+        If true, will raise an exception if SMILES is missing explicit H.
+    ** permute_xyz: bool, optional, default False
+        Only use if input molecule is in QCSchema format.
+        If True, the geometry will be permuted to reflect the canononical
+        atom order in the mapped SMILES. This function will return the permuted QCSchema. cmiles identifiers will be in
+        the `identifiers` field
+        If False, the map indices in the mapped SMILES will reflect the order of the atoms in the input QCSchema.
 
     Returns
     -------
-    cmiles: dict
-        The canonical SMILES
-        The provenance key maps to the cmiles version and openeye or rdkit version used.
+    cmiles: dict of identifiers
+
+        If `permute_xyz`, will return permuted qcschema with cmiles identifiers in `identifiers` field.
 
     """
     # check input and convert to oe or rdkit mol
-    molecule = cmiles.utils.load_molecule(molecule, backend=canonicalization)
-    molecule_copy = deepcopy(molecule)
-    # check for map. If map exists, remove. We only want maps generated with cmiles
-    if cmiles.utils.is_mapped(molecule_copy, backend=canonicalization):
-        cmiles.utils.remove_map(molecule_copy, backend=canonicalization)
+    molecule = cmiles.utils.load_molecule(molecule_input, toolkit=canonicalization, **kwargs)
 
-    smiles = {}
-    if canonicalization == 'openeye':
-        if not HAS_OPENEYE:
-            raise RuntimeError("You do not have OpenEye installed or you are missing the license.")
-        smiles['canonical_smiles'] = to_canonical_smiles_oe(molecule_copy, isomeric=False, explicit_hydrogen=False,
+    # check for map. If map exists, remove. We only want maps generated with cmiles
+    if cmiles.utils.has_atom_map(molecule):
+        cmiles.utils.remove_atom_map(molecule)
+
+    # check for explicit hydrogen
+    if strict and not cmiles.utils.has_explicit_hydrogen(molecule):
+        raise ValueError("Input molecule is missing explicit hydrogen")
+
+    # Check for fully defined stereochemsitry
+    if not cmiles.utils.has_stereo_defined(molecule):
+        raise ValueError("Input SMILES must have full stereochemistry defined")
+
+    molecule_ids = {}
+    toolkit = cmiles.utils._set_toolkit(molecule)
+    molecule_ids['canonical_smiles'] = toolkit.mol_to_smiles(molecule,
+                                                             isomeric=False,
+                                                             explicit_hydrogen=False,
                                                              mapped=False)
-        smiles['canonical_isomeric_smiles'] = to_canonical_smiles_oe(molecule_copy, isomeric=True, explicit_hydrogen=False,
+    molecule_ids['canonical_isomeric_smiles'] = toolkit.mol_to_smiles(molecule,
+                                                                      isomeric=True,
+                                                                      explicit_hydrogen=False,
                                                                       mapped=False)
-        smiles['canonical_isomeric_explicit_hydrogen_smiles'] = to_canonical_smiles_oe(molecule_copy, isomeric=True,
-                                                                                       explicit_hydrogen=True,
-                                                                                        mapped=False)
-        smiles['canonical_explicit_hydrogen_smiles'] = to_canonical_smiles_oe(molecule_copy, isomeric=False,
-                                                                               explicit_hydrogen=True, mapped=False)
-        smiles['canonical_isomeric_explicit_hydrogen_mapped_smiles'] = to_canonical_smiles_oe(molecule_copy, isomeric=True,
-                                                                                               explicit_hydrogen=True,
-                                                                                               mapped=True)
-        smiles['unique_protomer_representation'] = get_unique_protomer(molecule_copy)
-        smiles['provenance'] = 'cmiles_' + cmiles.__version__ + '_openeye_' + oe.__version__
-    elif canonicalization == 'rdkit':
-        if not HAS_RDKIT:
-           raise RuntimeError("You do not have RDKit installed")
-        smiles['canonical_smiles'] = to_canonical_smiles_rd(molecule_copy, isomeric=False, explicit_hydrogen=False,
-                                                             mapped=False)
-        smiles['canonical_isomeric_smiles'] = to_canonical_smiles_rd(molecule_copy, isomeric=True, explicit_hydrogen=False,
-                                                                      mapped=False)
-        smiles['canonical_isomeric_explicit_hydrogen_smiles'] = to_canonical_smiles_rd(molecule_copy, isomeric=True,
+    molecule_ids['canonical_explicit_hydrogen_smiles'] = toolkit.mol_to_smiles(molecule,
+                                                                               isomeric=False,
+                                                                               explicit_hydrogen=True,
+                                                                               mapped=False)
+    molecule_ids['canonical_isomeric_explicit_hydrogen_smiles'] = toolkit.mol_to_smiles(molecule,
+                                                                                        isomeric=True,
                                                                                         explicit_hydrogen=True,
                                                                                         mapped=False)
-        smiles['canonical_explicit_hydrogen_smiles'] = to_canonical_smiles_rd(molecule_copy, isomeric=False,
-                                                                               explicit_hydrogen=True, mapped=False)
-        smiles['canonical_isomeric_explicit_hydrogen_mapped_smiles'] = to_canonical_smiles_rd(molecule_copy, isomeric=True,
+    molecule_ids['canonical_isomeric_explicit_hydrogen_mapped_smiles'] = toolkit.mol_to_smiles(molecule, isomeric=True,
                                                                                                explicit_hydrogen=True,
                                                                                                mapped=True)
-        smiles['provenance'] = 'cmiles_' + cmiles.__version__ + '_rdkit_' + rd.__version__
-    else:
-        raise TypeError("canonicalization must be either 'openeye' or 'rdkit'")
 
-    smiles['standard_inchi'], smiles['inchi_key'] = to_inchi_and_key(molecule_copy)
-    smiles['molecular_formula'] = molecular_formula(molecule_copy)
+    molecule_ids['molecular_formula'] = cmiles.utils.mol_to_hill_molecular_formula(molecule)
+    inchi = to_inchi_and_key(molecule)
+    if inchi:
+        molecule_ids['standard_inchi'] = inchi[0]
+        molecule_ids['inchi_key'] = inchi[-1]
 
-    return smiles
+    if cmiles.utils.has_rdkit:
+        molecule_ids['unique_tautomer_representation'] = standardize_tautomer(molecule_ids['canonical_isomeric_smiles'])
+
+    if cmiles.utils.has_openeye:
+        molecule_ids['unique_protomer_representation'] = get_unique_protomer(molecule)
+
+    molecule_ids['provenance'] = 'cmiles_' + cmiles.__version__ + '_{}_'.format(canonicalization) + \
+                                 toolkit.toolkit.__version__
+
+    try:
+        if kwargs['permute_xyz']:
+            permuted_json_mol = cmiles.utils.permute_qcschema(molecule_input, molecule_ids, toolkit=canonicalization)
+            return permuted_json_mol
+        else:
+            return molecule_ids
+
+    except KeyError:
+        return molecule_ids
 
 
 def to_inchi_and_key(molecule):
+    """
+    Generate inchi and inchikey. Uses RDKit which uses the inchi API
+
+    Parameters
+    ----------
+    molecule: rdkit.Chem.Mol
+        If an oechem.OEMol is given, will convert it to an rdkit.Chem.Mol
+
+    Returns
+    -------
+    tuple (inchi, inchi_key)
+
+    """
 
     # Todo can use the InChI code directly here
-    # Make sure moelcule is rdkit mol
+    # Make sure molecule is rdkit mol
+    if not has_rdkit:
+        warnings.warn("rdkit is not installed. cmiles ids will not include inchi and inchikey")
+        return
     if not isinstance(molecule, rd.Chem.Mol):
         molecule = rd.Chem.MolFromSmiles(oe.oechem.OEMolToSmiles(molecule))
 
@@ -135,229 +159,77 @@ def to_inchi_and_key(molecule):
     return inchi, inchi_key
 
 
-def to_canonical_smiles_rd(molecule, isomeric, explicit_hydrogen, mapped):
-    """
-    Generate canonical SMILES with RDKit
-
-    Parameters
-    ----------
-    molecule: RDKit Chem.rdchem.Mol instance
-        The molecule to generate SMILES for
-    isomeric: bool
-        If True, SMILES will have isomeric information. If molecule already has isomeric information, this will be retained.
-        If no isomeric information exists, this function will perceive it and assign the CW (clockwise) flag for chiral
-        centers and the E-isomer for stereo bonds.
-    explicit_hydrogen: bool
-        If True, SMILES will have explicit hydrogens
-    mapped: bool
-        If True, SMILES will have map indices. (+1 because the map is 1 indexed)
-
-    Returns
-    -------
-    smiles: str
-        The canonical SMILES
-
-    """
-
-    molecule = deepcopy(molecule)
-    # Check molecule instance
-    if not isinstance(molecule, rd.Chem.rdchem.Mol):
-        warnings.warn("molecule should be rdkit molecule. Converting to rdkit molecule", UserWarning)
-        # Check if OpenEye Mol and convert to RDKit molecule
-        if HAS_OPENEYE and isinstance(molecule, oe.OEMol):
-            # Convert OpenEye Mol to RDKit molecule
-            molecule = rd.Chem.MolFromSmiles(oe.oechem.OEMolToSmiles(molecule))
-            if molecule is None:
-                raise RuntimeError("RDKit could not parse SMILES")
-        else:
-            raise RuntimeError('Molecule needs to be an RDKit molecule or you must have OpenEye installed')
-
-    if explicit_hydrogen:
-        # Add explicit hydrogens
-        molecule = rd.Chem.AddHs(molecule)
-
-    if isomeric:
-        # Make sure molecule has isomeric information
-        # If molecule already has isomeric information, keep it.
-
-        # First find chiral centers
-        chiral_centers = rd.Chem.FindMolChiralCenters(molecule, includeUnassigned=True)
-        for center in chiral_centers:
-            atom_id = center[0]
-            if center[-1] == '?':
-                # If chirality is unspecified, assign clockwise chiral flag
-                molecule.GetAtomWithIdx(atom_id).SetChiralTag(rd.Chem.rdchem.ChiralType.CHI_TETRAHEDRAL_CW)
-
-        # Find potential stereo bonds and set to E-isomer if unspecified
-        rd.Chem.FindPotentialStereoBonds(molecule)
-        for bond in molecule.GetBonds():
-            if bond.GetStereo() == rd.Chem.BondStereo.STEREOANY:
-                bond.SetStereo(rd.Chem.BondStereo.STEREOE)
-
-    # Get canonical order for map
-    if mapped:
-        ranks = list(rd.Chem.CanonicalRankAtoms(molecule, breakTies=True))
-        for i, j in enumerate(ranks):
-            molecule.GetAtomWithIdx(i).SetAtomMapNum(j+1)
-
-    smiles = rd.Chem.MolToSmiles(molecule, allHsExplicit=explicit_hydrogen, isomericSmiles=isomeric, canonical=True)
-    return smiles
-
-
-def to_canonical_smiles_oe(molecule, isomeric, explicit_hydrogen, mapped, generate_conformer=True):
-    """
-    Generate canonical SMILES with OpenEye.
-    If Isomeric is True, this function will check if a conformer exists. If there is no conformer, oeomega will be used
-    to generate a conformer so that stereochemistry can be perceived from the 3D conformation.
-
-    Parameters
-    ----------
-
-    molecule: oechem.OEMol
-    isomeric: bool
-        If True, SMILES will include chirality and stereo bonds
-    explicit_hydrogen: bool
-        If True, SMILES will include explicit hydrogen
-    mapped: bool
-        If True, will include map indices (In order of OpenEye omega canonical ordering)
-    generate_conformer: bool, optional. Default True
-        Generating conformer is needed to infer stereochemistry if SMILES does not have stereochemistry specified. Sometimes,
-        however, this can be very slow because the molecule has many rotatable bonds. Then it is recommended to turn
-        off generate_conformer but the stereochemistry might not be specified in the isomeric SMILES
-
-    Returns
-    -------
-    smiles str
-
-    """
-    if not HAS_OPENEYE:
-        raise ImportError("OpenEye is not installed. You can use the canonicalization='rdkit' to use the RDKit backend"
-                           "The Conda recipe for cmiles installs rdkit")
-
-    from openeye import oechem
-
-    # check molecule
-    if not isinstance(molecule, (oechem.OEMol, oechem.OEGraphMol, oechem.OEMolBase)):
-        warnings.warn("molecule must be OEMol. Converting to OEMol", UserWarning)
-        rd_mol = molecule
-        molecule = oechem.OEMol()
-        oechem.OEParseSmiles(molecule, rd.Chem.MolToSmiles(rd_mol))
-    molecule = oechem.OEMol(molecule)
-
-    if explicit_hydrogen:
-        oechem.OEAddExplicitHydrogens(molecule)
-
-    # Generate conformer for canonical order
-    if generate_conformer:
-        try:
-            molecule = cmiles.utils.generate_conformers(molecule, max_confs=1, strict_stereo=False, strict_types=False)
-        except RuntimeError:
-            warnings.warn("Omega failed to generate a conformer. Smiles may be missing stereochemistry and the map index will"
-                          "not be in canonical order.")
-
-    if isomeric:
-        oechem.OEPerceiveChiral(molecule)
-        oechem.OE3DToAtomStereo(molecule)
-        oechem.OE3DToBondStereo(molecule)
-
-    if not explicit_hydrogen and not mapped and isomeric:
-        return oechem.OEMolToSmiles(molecule)
-    if not explicit_hydrogen and not mapped and not isomeric:
-        return oechem.OECreateSmiString(molecule, oechem.OESMILESFlag_Canonical | oechem.OESMILESFlag_RGroups)
-
-    if not mapped and explicit_hydrogen and isomeric:
-        return oechem.OECreateSmiString(molecule, oechem.OESMILESFlag_Hydrogens | oechem.OESMILESFlag_ISOMERIC)
-
-    if not mapped and explicit_hydrogen and not isomeric:
-        return oechem.OECreateSmiString(molecule, oechem.OESMILESFlag_Hydrogens | oechem.OESMILESFlag_Canonical |
-                                        oechem.OESMILESFlag_RGroups)
-
-    # Add tags to molecule
-    for atom in molecule.GetAtoms():
-        atom.SetMapIdx(atom.GetIdx() + 1)
-
-    if mapped and not explicit_hydrogen:
-        raise Warning("Tagged SMILES must include hydrogens to retain order")
-
-    if mapped and not isomeric:
-        raise Warning("Tagged SMILES must include stereochemistry ")
-
-    # add tag to data
-    tag = oechem.OEGetTag("has_map")
-    molecule.SetData(tag, bool(True))
-
-    return oechem.OEMolToSmiles(molecule)
-
-
 def to_iupac(molecule):
-    if not HAS_OPENEYE:
+    if not has_openeye:
         raise ImportError("OpenEye is not installed. You can use the canonicalization='rdkit' to use the RDKit backend"
                            "The Conda recipe for cmiles installs rdkit")
 
     from openeye import oeiupac
+    if not oeiupac.OEIUPACIsLicensed():
+        raise ImportError("Must have OEIUPAC license!")
     return oeiupac.OECreateIUPACName(molecule)
 
 
-def molecular_formula(molecule):
+def get_unique_protomer(molecule):
     """
-    Generate Hill sorted empirical formula. Hill sorted first lists C and H and then all other symbols in alphabetical
-    order
+    Generate unique protomer for all tuatomers and charge states of the moelcule.
+    Requires openeye license.
+
     Parameters
     ----------
-    molecule: openeye or rdkit molecule
+    molecule: oechem.OEMol
+        Will convert rdkit.Chem.Mol to oechem.OEMol if openeye is installed and license is valid
 
     Returns
     -------
-    hill sorted empirical formula
+    unique_protomer: str
+
     """
 
-    # check molecule
-    if HAS_OPENEYE and isinstance(molecule, (oe.OEMol, oe.OEGraphMol, oe.OEMolBase )):
-        # use openeye
-        if not oe.oechem.OEHasExplicitHydrogens(molecule):
-            molecule = deepcopy(molecule)
-            #ToDo This only checks for at least one Hydrogen so it might not be adequate.
-            oe.oechem.OEAddExplicitHydrogens(molecule)
-        symbols = [oe.oechem.OEGetAtomicSymbol(a.GetAtomicNum()) for a in molecule.GetAtoms()]
-
-    elif HAS_RDKIT and isinstance(molecule, rd.Chem.Mol):
-        # use rdkit
-        molecule = rd.Chem.AddHs(deepcopy(molecule))
-        symbols = [a.GetSymbol() for a in molecule.GetAtoms()]
-    else:
-        raise TypeError("Only openeye and rdkit molecules are supported molecules")
-
-    count = collections.Counter(x.title() for x in symbols)
-
-    hill_sorted = []
-    for k in ['C', 'H']:
-        # remove C and H from count
-        if k in count:
-            c = count.pop(k)
-            hill_sorted.append(k)
-            if c > 1:
-                hill_sorted.append(str(c))
-
-    for k in sorted(count.keys()):
-        c = count[k]
-        hill_sorted.append(k)
-        if c > 1:
-            hill_sorted.append(str(c))
-
-    return "".join(hill_sorted)
-
-
-def get_unique_protomer(molecule):
-
+    molecule = deepcopy(molecule)
     # This only works for OpenEye
     # Todo There might be a way to use different layers of InChI for this purpose.
     # Not all tautomers are recognized as the same by InChI so it won't capture all tautomers.
     # But if we use only the formula and connectivity level we might be able to capture a larger subset.
     #
-    if HAS_OPENEYE:
+    if has_openeye:
         from openeye import oequacpac, oechem
     else:
         raise RuntimeError("Must have OpenEye for unique protomer feature")
+    if not oechem.OEChemIsLicensed():
+        raise ImportError("Must have OEChem license!")
+    if not oequacpac.OEQuacPacIsLicensed():
+        raise ImportError("Must have OEQuacPac license!")
+
+    if has_rdkit:
+        if isinstance(molecule, rd.Chem.rdchem.Mol):
+            # convert to openeye molecule
+            # Maybe we shouldn't do this.
+            smiles = rd.Chem.MolToSmiles(molecule)
+            molecule = oechem.OEMol()
+            oechem.OESmilesToMol(molecule, smiles)
+
     molecule_copy = deepcopy(molecule)
     oequacpac.OEGetUniqueProtomer(molecule_copy, molecule)
     return oechem.OEMolToSmiles(molecule_copy)
+
+
+def standardize_tautomer(iso_can_smi):
+    """
+    Standardize tautomer to one universal tautomer. Does not standardize for ionization states.
+    In some cases preforms better than oequacpac.OEGetUniqueProtomer. See examples/tautomers.ipynb
+    Parameters
+    ----------
+    iso_can_smi: str
+
+    Returns
+    -------
+    std_tautomer: str
+    """
+    if has_rdkit:
+        from rdkit.Chem import MolStandardize
+    else:
+        raise ImportError("Must have rdkit installed to use this function")
+
+    std_tautomer = MolStandardize.canonicalize_tautomer_smiles(iso_can_smi)
+    return std_tautomer

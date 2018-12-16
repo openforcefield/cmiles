@@ -4,6 +4,7 @@ Generate canonical, isomeric, explicit hydrogen, mapped SMILES
 """
 from copy import deepcopy
 import cmiles
+import warnings
 from .utils import has_openeye, has_rdkit
 
 if has_openeye:
@@ -104,11 +105,15 @@ def to_molecule_id(molecule_input, canonicalization='openeye', strict=True, **kw
                                                                                                explicit_hydrogen=True,
                                                                                                mapped=True)
 
-    molecule_ids['standard_inchi'], molecule_ids['inchi_key'] = to_inchi_and_key(molecule)
     molecule_ids['molecular_formula'] = cmiles.utils.mol_to_hill_molecular_formula(molecule)
+    inchi = to_inchi_and_key(molecule)
+    if inchi:
+        molecule_ids['standard_inchi'] = inchi[0]
+        molecule_ids['inchi_key'] = inchi[-1]
 
     if cmiles.utils.has_rdkit:
         molecule_ids['unique_tautomer_representation'] = standardize_tautomer(molecule_ids['canonical_isomeric_smiles'])
+
     if cmiles.utils.has_openeye:
         molecule_ids['unique_protomer_representation'] = get_unique_protomer(molecule)
 
@@ -143,7 +148,10 @@ def to_inchi_and_key(molecule):
 
     # Todo can use the InChI code directly here
     # Make sure molecule is rdkit mol
-    if has_rdkit and not isinstance(molecule, rd.Chem.Mol):
+    if not has_rdkit:
+        warnings.warn("rdkit is not installed. cmiles ids will not include inchi and inchikey")
+        return
+    if not isinstance(molecule, rd.Chem.Mol):
         molecule = rd.Chem.MolFromSmiles(oe.oechem.OEMolToSmiles(molecule))
 
     inchi = rd.Chem.MolToInchi(molecule)

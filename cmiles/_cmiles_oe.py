@@ -131,7 +131,8 @@ def mol_to_smiles(molecule, isomeric=True, explicit_hydrogen=True, mapped=True):
     molecule = oechem.OEMol(molecule)
 
     if explicit_hydrogen:
-        oechem.OEAddExplicitHydrogens(molecule)
+        if not has_explicit_hydrogen(molecule):
+            oechem.OEAddExplicitHydrogens(molecule)
 
     # First check if geometry from JSON exists
     try:
@@ -258,6 +259,7 @@ def get_map_ordered_geometry(molecule, atom_map):
 
 
 def has_explicit_hydrogen(molecule):
+    #ToDo test this function well
     """
 
     Parameters

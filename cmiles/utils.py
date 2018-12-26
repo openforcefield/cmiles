@@ -219,7 +219,7 @@ def mol_to_map_ordered_qcschema(molecule, molecule_ids, multiplicity=1):
     symbols, geometry = toolkit.get_map_ordered_geometry(molecule, atom_map)
     charge = get_charge(molecule)
 
-    qcschema_mol = {'symbols': symbols, 'geometry': geometry, 'connectivity_table': connectivity,
+    qcschema_mol = {'symbols': symbols, 'geometry': geometry, 'connectivity': connectivity,
                     'molecular_charge': charge, 'molecular_multiplicity': multiplicity, 'identifiers': molecule_ids}
 
     return qcschema_mol

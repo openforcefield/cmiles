@@ -305,3 +305,13 @@ def test_permute_json(toolkit):
         for i in range(3):
             assert json_geom[atom_map[m]][i] == pytest.approx(permuted_geom[m-1][i], 0.0000001)
 
+@pytest.mark.parametrize('toolkit', toolkits_name)
+def test_get_atom_map_mapped_smiles(toolkit):
+    smiles_1 = '[H]C([H])(C([H])([H])O[H])O[H]'
+    smiles_2 = '[H:5][C:1]([H:6])([C:2]([H:7])([H:8])[O:4][H:10])[O:3][H:9]'
+    mol_1 = utils.load_molecule(smiles_1, toolkit=toolkit)
+    mol_2 = utils.load_molecule(smiles_2, toolkit=toolkit)
+
+    assert utils.get_atom_map(mol_2, smiles_2)
+    with pytest.raises(ValueError):
+        utils.get_atom_map(mol_1, smiles_1)

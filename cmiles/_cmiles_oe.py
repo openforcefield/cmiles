@@ -203,6 +203,11 @@ def get_atom_map(molecule, mapped_smiles):
     -------
 
     """
+    # check that smiles has map indices
+    mapped_mol = oechem.OEMol()
+    oechem.OESmilesToMol(mapped_mol, mapped_smiles)
+    if not has_atom_map(mapped_mol):
+        raise ValueError("Mapped SMILES must have map indices for all atoms and hydrogens")
     ss = oechem.OESubSearch(mapped_smiles)
     oechem.OEPrepareSearch(molecule, ss)
     ss.SetMaxMatches(1)

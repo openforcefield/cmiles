@@ -188,6 +188,10 @@ def get_atom_map(molecule, mapped_smiles):
     -------
 
     """
+    # Check for mapping in mapped_smiles
+    mapped_mol = Chem.MolFromSmiles(mapped_smiles)
+    if not has_atom_map(mapped_mol):
+        raise ValueError("mapped SMILES must have map for every heavy atom and hydrogen")
     # Check if molecule has explicit H
     if not has_explicit_hydrogen(molecule):
         molecule = Chem.AddHs(molecule)

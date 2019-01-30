@@ -219,7 +219,7 @@ def mol_to_map_ordered_qcschema(molecule, molecule_ids, multiplicity=1):
     symbols, geometry = toolkit.get_map_ordered_geometry(molecule, atom_map)
     charge = get_charge(molecule)
 
-    qcschema_mol = {'symbols': symbols, 'geometry': geometry, 'connectivity_table': connectivity,
+    qcschema_mol = {'symbols': symbols, 'geometry': geometry, 'connectivity': connectivity,
                     'molecular_charge': charge, 'molecular_multiplicity': multiplicity, 'identifiers': molecule_ids}
 
     return qcschema_mol
@@ -405,7 +405,7 @@ def _set_toolkit(molecule):
         either cmiles._cmiles_oe or cmiles._cmiles_rd
     """
 
-    if has_openeye and isinstance(molecule, (oechem.OEMol, oechem.OEMol, oechem.OEGraphMol)):
+    if has_openeye and isinstance(molecule, (oechem.OEMol, oechem.OEMol, oechem.OEGraphMol, oechem.OEMolBase)):
         import cmiles._cmiles_oe as toolkit
     elif has_rdkit and isinstance(molecule, Chem.rdchem.Mol):
         import cmiles._cmiles_rd as toolkit

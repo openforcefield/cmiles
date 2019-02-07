@@ -34,14 +34,26 @@ def test_load_molecule(toolkit):
 
 
 @pytest.mark.parametrize('toolkit', toolkits_name)
-def test_is_mapped(toolkit):
+@pytest.mark.parametrize('input, output', [('[H:3][C:1]([H:4])([H:5])[C:2]([H:6])([H:7])[H:8]', True),
+                                           ('[H:3][C:1]([H])([H:5])[C]([H])([H:7])[H:8]', True),
+                                           ('CCCC', False)])
+
+def test_is_mapped(toolkit, input, output):
     """Test is mapped"""
-    mapped_smiles = '[H:3][C:1]([H:4])([H:5])[C:2]([H:6])([H:7])[H:8]'
-    mapped_mol = utils.load_molecule(mapped_smiles, toolkit=toolkit)
-    assert utils.has_atom_map(mapped_mol) == True
+    mapped_mol = utils.load_molecule(input, toolkit=toolkit)
+    assert utils.has_atom_map(mapped_mol) == output
     utils.remove_atom_map(mapped_mol)
     assert utils.has_atom_map(mapped_mol) == False
 
+
+@pytest.mark.parametrize('toolkit', toolkits_name)
+@pytest.mark.parametrize('input, output', [('[H:3][C:1]([H:4])([H:5])[C:2]([H:6])([H:7])[H:8]', False),
+                                           ('[H:3][C:1]([H:4])([H:5])[C]([H:6])([H:7])[H:8]', True),
+                                           ('CCCC', True)])
+def test_is_missing_map(toolkit, input, output):
+    #ToDo - Known problem that RDKit does not add explicit H to molecules even with explicit H SMILES so if map of H is missing it will not pick it up
+    mol = utils.load_molecule(input, toolkit=toolkit)
+    assert utils.is_missing_atom_map(mol) == output
 
 @pytest.mark.parametrize('toolkit_str', toolkits_name)
 def test_mol_from_json(toolkit_str):

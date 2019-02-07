@@ -130,6 +130,9 @@ def mol_to_smiles(molecule, isomeric=True, explicit_hydrogen=True, mapped=True):
 
     molecule = oechem.OEMol(molecule)
 
+    if has_atom_map(molecule):
+        raise ValueError("Why oh why does the molecule still have map indices if it was already removed???")
+
     if explicit_hydrogen:
         if not has_explicit_hydrogen(molecule):
             oechem.OEAddExplicitHydrogens(molecule)
@@ -351,11 +354,41 @@ def has_stereo_defined(molecule):
 
 
 def has_atom_map(molecule):
-    IS_MAPPED = True
+    """
+    Checks if any atom has map indices. Will return True if even only one atom has a map index
+    Parameters
+    ----------
+    molecule
+
+    Returns
+    -------
+
+    """
+    IS_MAPPED = False
+    for atom in molecule.GetAtoms():
+            if atom.GetMapIdx() != 0:
+                IS_MAPPED = True
+                return IS_MAPPED
+    return IS_MAPPED
+
+
+def is_missing_atom_map(molecule):
+    """
+    Checks if any atom in molecule is missing a map index. If even only one atom is missing a map index will return True
+    Parameters
+    ----------
+    molecule
+
+    Returns
+    -------
+
+    """
+    MISSING_ATOM_MAP = False
     for atom in molecule.GetAtoms():
             if atom.GetMapIdx() == 0:
-                IS_MAPPED = False
-    return IS_MAPPED
+                MISSING_ATOM_MAP = True
+                return MISSING_ATOM_MAP
+    return MISSING_ATOM_MAP
 
 
 def remove_atom_map(molecule):

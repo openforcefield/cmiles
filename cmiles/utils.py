@@ -147,6 +147,8 @@ def mol_to_smiles(molecule, **kwargs):
     """
     molecule = copy.deepcopy(molecule)
     toolkit = _set_toolkit(molecule)
+    if has_atom_map(molecule):
+        remove_atom_map(molecule)
     return toolkit.mol_to_smiles(molecule, **kwargs)
 
 
@@ -299,7 +301,7 @@ def permute_qcschema(json_mol, molecule_ids, **kwargs):
 
 def has_atom_map(molecule):
     """
-    Check if molecule has atom map indices
+    Check if molecule has atom map indices. Will return True even if only one atom has map index
 
     Parameters
     ----------
@@ -313,6 +315,24 @@ def has_atom_map(molecule):
     """
     toolkit = _set_toolkit(molecule)
     return toolkit.has_atom_map(molecule)
+
+
+def is_missing_atom_map(molecule):
+    """
+    Check if any atom in molecule is missing atom map index
+
+    Parameters
+    ----------
+    molecule:
+        oechem.Mol or rdkit.Chem.Mol
+
+    Returns
+    -------
+    True or False
+
+    """
+    toolkit = _set_toolkit(molecule)
+    return toolkit.is_missing_atom_map(molecule)
 
 
 def remove_atom_map(molecule):

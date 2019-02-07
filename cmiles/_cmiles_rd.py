@@ -304,12 +304,42 @@ def has_stereo_defined(molecule):
 
 
 def has_atom_map(molecule):
-    IS_MAPPED = True
+    """
+    Checks if any atom has map indices. Will return True if even only one atom has a map index
+    Parameters
+    ----------
+    molecule
+
+    Returns
+    -------
+
+    """
+    IS_MAPPED = False
     for atom in molecule.GetAtoms():
-        if atom.GetAtomMapNum() == 0:
-            IS_MAPPED = False
+            if atom.GetAtomMapNum() != 0:
+                IS_MAPPED = True
+                return IS_MAPPED
     return IS_MAPPED
 
+
+def is_missing_atom_map(molecule):
+    """
+    Checks if any atom in molecule is missing a map index. If even only one atom is missing a map index will return True
+
+    Parameters
+    ----------
+    molecule
+
+    Returns
+    -------
+
+    """
+    MISSING_ATOM_MAP = False
+    for atom in molecule.GetAtoms():
+            if atom.GetAtomMapNum() == 0:
+                MISSING_ATOM_MAP = True
+                return MISSING_ATOM_MAP
+    return MISSING_ATOM_MAP
 
 def remove_atom_map(molecule):
     for a in molecule.GetAtoms():

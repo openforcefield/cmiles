@@ -37,7 +37,6 @@ def test_load_molecule(toolkit):
 @pytest.mark.parametrize('input, output', [('[H:3][C:1]([H:4])([H:5])[C:2]([H:6])([H:7])[H:8]', True),
                                            ('[H:3][C:1]([H])([H:5])[C]([H])([H:7])[H:8]', True),
                                            ('CCCC', False)])
-
 def test_is_mapped(toolkit, input, output):
     """Test is mapped"""
     mapped_mol = utils.load_molecule(input, toolkit=toolkit)
@@ -54,6 +53,7 @@ def test_is_missing_map(toolkit, input, output):
     #ToDo - Known problem that RDKit does not add explicit H to molecules even with explicit H SMILES so if map of H is missing it will not pick it up
     mol = utils.load_molecule(input, toolkit=toolkit)
     assert utils.is_missing_atom_map(mol) == output
+
 
 @pytest.mark.parametrize('toolkit_str', toolkits_name)
 def test_mol_from_json(toolkit_str):
@@ -112,6 +112,7 @@ def test_has_stereochemistry(input1, input2, toolkit_name):
     with pytest.warns(UserWarning):
         utils.has_stereo_defined(mol)
 
+
 @using_openeye
 def test_canonical_order_oe():
     """Test canonical atom order"""
@@ -159,26 +160,28 @@ def test_canonical_order_rd():
 
 @pytest.mark.parametrize('toolkit_name', toolkits_name)
 @pytest.mark.parametrize('input, output', [('COC(C)c1c(Cl)ccc(F)c1Cl', False),
-                                          ('C[C@@H](c1c(ccc(c1Cl)F)Cl)OC', False),
-                                          ('O=O', True),
-                                          ('[CH3:1][CH2:3][CH2:4][CH3:2]', False)])
+                                           ('C[C@@H](c1c(ccc(c1Cl)F)Cl)OC', False),
+                                           ('O=O', True),
+                                           ('[CH3:1][CH2:3][CH2:4][CH3:2]', False)])
 def test_explicit_h(input, output, toolkit_name):
     """Test input SMILES for explicit H"""
     mol = utils.load_molecule(input, toolkit=toolkit_name)
     assert utils.has_explicit_hydrogen(mol) == output
 
+
 @using_rdkit
 @pytest.mark.parametrize('input, output', [('[H]c1c(c(c(c(c1F)Cl)[C@]([H])(C([H])([H])[H])OC([H])([H])[H])Cl)[H]', False),
-                                          ('[C:1]([O:2][H:6])([H:3])([H:4])[H:5]', False)])
+                                           ('[C:1]([O:2][H:6])([H:3])([H:4])[H:5]', False)])
 def test_explicit_h_rd(input, output):
     """Test input SMILES for explicit H"""
 
     mol = utils.load_molecule(input, toolkit='rdkit')
     assert utils.has_explicit_hydrogen(mol) == output
 
+
 @using_openeye
 @pytest.mark.parametrize('input, output', [('[H]c1c(c(c(c(c1F)Cl)[C@]([H])(C([H])([H])[H])OC([H])([H])[H])Cl)[H]', True),
-                                          ('[C:1]([O:2][H:6])([H:3])([H:4])[H:5]', True)])
+                                           ('[C:1]([O:2][H:6])([H:3])([H:4])[H:5]', True)])
 def test_explicit_h_oe(input, output):
     """Test input SMILES for explicit H"""
 
@@ -226,7 +229,7 @@ def test_get_atom_map(toolkit, toolkit_name):
 
 
 @pytest.mark.parametrize('mapped_smiles, expected_table', [('[H:5][C:1]([H:6])([H:7])[C:3]([H:11])([H:12])[C:4]([H:13])([H:14])[C:2]([H:8])([H:9])[H:10]',
-                                                          np.array([[0, 2, 1], [1, 3, 1],[2, 3, 1],[0, 4, 1],[0, 5, 1],
+                                                           np.array([[0, 2, 1], [1, 3, 1],[2, 3, 1],[0, 4, 1],[0, 5, 1],
                                                                     [0, 6, 1],[1, 7, 1],[1, 8, 1],[1, 9, 1],[2, 10, 1],
                                                                     [2, 11, 1],[3, 12, 1],[3, 13, 1]])),
                                                            ('[H:7][c:1]1[c:2]([c:4]([o:5][c:3]1[H:9])[O:6][H:10])[H:8]',
@@ -316,6 +319,7 @@ def test_permute_json(toolkit):
     for m in atom_map:
         for i in range(3):
             assert json_geom[atom_map[m]][i] == pytest.approx(permuted_geom[m-1][i], 0.0000001)
+
 
 @pytest.mark.parametrize('toolkit', toolkits_name)
 def test_get_atom_map_mapped_smiles(toolkit):

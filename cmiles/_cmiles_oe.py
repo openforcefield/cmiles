@@ -236,19 +236,24 @@ def get_map_ordered_geometry(molecule, atom_map):
 
     Parameters
     ----------
-    molecule
-    atom_map
+    molecule: OEMol with 1 conformer or OEConf
+    atom_map: dict
+        map_idx:atom_idx
 
     Returns
     -------
-
+    symbols: list of str
+        list of symbols
+    geometry: list of ints
+        xyz geometry. List is length N*3
     """
 
     if not molecule.GetDimension() == 3:
         raise RuntimeError("Molecule must have 3D coordinates for generating a QCSchema molecule")
 
-    if molecule.GetMaxConfIdx() != 1:
-        raise Warning("The molecule must have at least and at most 1 conformation")
+    if isinstance(molecule, oechem.OEMol):
+        if molecule.GetMaxConfIdx() != 1:
+            raise Warning("The molecule must have at least and at most 1 conformation")
 
     symbols = []
     geometry = []

@@ -227,7 +227,7 @@ def mol_to_map_ordered_qcschema(molecule, molecule_ids, multiplicity=1):
     return qcschema_mol
 
 
-def get_atom_map(molecule, mapped_smiles):
+def get_atom_map(molecule, **kwargs):
     """
     Get mapping of map index -> atom index
 
@@ -245,7 +245,7 @@ def get_atom_map(molecule, mapped_smiles):
 
     """
     toolkit = _set_toolkit(molecule)
-    atom_map = toolkit.get_atom_map(molecule, mapped_smiles)
+    atom_map = toolkit.get_atom_map(molecule, **kwargs)
     return atom_map
 
 
@@ -346,6 +346,19 @@ def remove_atom_map(molecule):
     """
     toolkit = _set_toolkit(molecule)
     toolkit.remove_atom_map(molecule)
+
+
+def restore_atom_map(molecule):
+    """
+    Restore atom map from atom data
+    Parameters
+    ----------
+    molecule
+        oechem.OEMol or rdkit.Chem.Mol
+
+    """
+    toolkit = _set_toolkit(molecule)
+    toolkit.restore_atom_map(molecule)
 
 
 def has_stereo_defined(molecule):

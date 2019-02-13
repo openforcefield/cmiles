@@ -176,9 +176,8 @@ def get_connectivity_table(molecule, inverse_map):
     return connectivity_table
 
 
-def get_atom_map(molecule, mapped_smiles):
+def get_atom_map(molecule, mapped_smiles, strict=True):
     """
-
     Parameters
     ----------
     molecule
@@ -188,9 +187,10 @@ def get_atom_map(molecule, mapped_smiles):
     -------
 
     """
+    # ToDo if strict is True, only generate atom map if map indices on SMILES are cononical
     # Check for mapping in mapped_smiles
     mapped_mol = Chem.MolFromSmiles(mapped_smiles)
-    if not has_atom_map(mapped_mol):
+    if is_missing_atom_map(mapped_mol):
         raise ValueError("mapped SMILES must have map for every heavy atom and hydrogen")
     # Check if molecule has explicit H
     if not has_explicit_hydrogen(molecule):
@@ -341,6 +341,33 @@ def is_missing_atom_map(molecule):
                 return MISSING_ATOM_MAP
     return MISSING_ATOM_MAP
 
-def remove_atom_map(molecule):
-    for a in molecule.GetAtoms():
-        a.SetAtomMapNum(0)
+
+def remove_atom_map(molecule, keep_map_data=True):
+    """
+    Remove atom map but store it in atom data.
+    Parameters
+    ----------
+    molecule
+
+    Returns
+    -------
+
+    """
+    for atom in molecule.GetAtoms():
+        if atom.GetAtomMapNum() != 0:
+            if keep_map_data:
+                atom.SetProp('_map_idx', str(atom.GetAtomMapNum()))
+            atom.SetAtomMapNum(0)
+
+
+def restore_atom_map(molecule):
+    """
+    Restore atom map from atom data
+    Parameters
+    ----------
+    molecule: OEMol
+        Must have 'MapIdx' in atom data dictionary
+    """
+    for atom in molecule.GetAtoms():
+        if atom.HasProp('_map_idx'):
+            atom.SetAtomMapNum(int(atom.GetProp('_map_idx')))

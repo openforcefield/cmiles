@@ -134,6 +134,7 @@ def mol_to_smiles(molecule, isomeric=True, explicit_hydrogen=True, mapped=True):
     molecule = oechem.OEMol(molecule)
 
     if has_atom_map(molecule):
+        #ToDo remove?
         raise ValueError("Why oh why does the molecule still have map indices if it was already removed???")
 
     if explicit_hydrogen:
@@ -196,7 +197,7 @@ def get_connectivity_table(molecule, inverse_map):
     return connectivity_table
 
 
-def get_atom_map(molecule, mapped_smiles=None, strict=True):
+def get_atom_map(molecule, mapped_smiles, strict=True):
     """
     Map tag in mapped SMILES to atom idx
 
@@ -214,58 +215,46 @@ def get_atom_map(molecule, mapped_smiles=None, strict=True):
     -------
 
     """
+    # Check if molecule has explicit hydrogen
+    if not has_explicit_hydrogen(molecule):
+        raise ValueError("Molecule must have explicit hydrogen")
+
     # Check that map SMILES has map indices on all atoms and that it's in canonical order.
-    if mapped_smiles:
-        mapped_mol = oechem.OEMol()
-        oechem.OESmilesToMol(mapped_mol, mapped_smiles)
-        if is_missing_atom_map(mapped_mol):
-            raise ValueError("Mapped SMILES must have map indices for all atoms and hydrogen")
-        # check canonical order of atom map
-        if not is_map_canonical(mapped_mol):
-            # map in mapped SMILES is not canonical - it might come from RDKit
-            can_mapped_smiles = False
-        else:
-            can_mapped_smiles = True
+    mapped_mol = oechem.OEMol()
+    oechem.OESmilesToMol(mapped_mol, mapped_smiles)
+    # Check for explicit hydrogen
+    if not has_explicit_hydrogen(mapped_mol):
+        raise ValueError("Mapped SMILES must include explicit hydrogen")
 
-    # Check that molecule has map indices
-    if not is_missing_atom_map(molecule):
-        # full atom map on molecule. Now check that this atom map corresponds to canonical order of atoms
-        if is_map_canonical(molecule):
-            # Check mapped smiles
-            if not mapped_smiles:
-                substructure_search = False
-            else:
-                if can_mapped_smiles:
-                    substructure_search = False
-                else:
-                    # map on SMILES is not canonical (Map on molecule is canonical).
-                    if strict:
-                        raise ValueError("Map indices on mapped SMILES are not canonical but map indices on molecule are canonical.")
-                    if not strict:
-                        # Use mapped SMILES
-                        substructure_search = True
-        else:
-            # Map indices on molecule are not canonical and no mapped SMILES were provided
-            if strict:
-                raise ValueError("Map indices on molecule atoms are not in canonical order")
-            if not strict:
-                # Use map indices on molecule
-                substructure_search = False
+    # Check that all atoms have map indices
+    if is_missing_atom_map(mapped_mol):
+        # mapped SMILES must have map index on every atom
+        raise ValueError("Mapped SMILES must have map indices for all atoms and hydrogen")
+
+    # check canonical order of atom map
+    if not is_map_canonical(mapped_mol):
+        if strict:
+            raise ValueError("Map indices on mapped SMILES are not in openeye canonical order. If you set strict to False, "
+                             "you can get an atom map but only do this if you understand what you are doing.")
+        # map in mapped SMILES is not canonical - it might come from RDKit
+        can_mapped_smiles = False
     else:
-        # Molecule does not have map indices on all atoms
-        if mapped_smiles:
-            if can_mapped_smiles:
-                substructure_search = True
-            else:
-                if strict:
-                    raise ValueError("Mapped SMILES provided is not in canonical order")
-                else:
-                    substructure_search = True
-        else:
-            raise ValueError("Molecule does not have map indices and no mapped SMILES was provided.")
+        can_mapped_smiles = True
 
-    if substructure_search:
-        # Get atom map with substructure search. Not recommended because map indices can flip for symmetrical molecules.
+    if can_mapped_smiles:
+        # Mapped SMILES is canonical. Get atom map from canonical ordered molecule
+        molcopy = oechem.OEMol(molecule)
+        # store atom indices in molecule data
+        for atom in molcopy.GetAtoms():
+            atom.SetData('atom_idx', atom.GetIdx())
+        canonical_order_atoms(molcopy)
+        atom_map = {}
+        for atom in molcopy.GetAtoms():
+            atom_map[atom.GetIdx()+1] = atom.GetData('atom_idx')
+    elif not can_mapped_smiles and not strict:
+        warnings.warn("Using substructure search to get atom map. If your molecule is symmetric, more than one atom mapping"
+                      " is possible and the order of the geometry can flip.")
+        # Use substructure search
         ss = oechem.OESubSearch(mapped_smiles)
         oechem.OEPrepareSearch(molecule, ss)
         ss.SetMaxMatches(1)
@@ -282,12 +271,8 @@ def get_atom_map(molecule, mapped_smiles=None, strict=True):
         mol = oechem.OEGraphMol()
         oechem.OESubsetMol(mol, match, True)
         print("Match SMILES: {}".format(oechem.OEMolToSmiles(mol)))
-
-    if not substructure_search:
-        # Generate atom map from atom map indices
-        atom_map = {}
-        for atom in molecule.GetAtoms():
-            atom_map[atom.GetMapIdx()] = atom.GetIdx()
+    else:
+        raise RuntimeError("Mapped indices on mapped SMILES are not canonical.")
 
     return atom_map
 
@@ -449,20 +434,14 @@ def is_missing_atom_map(molecule):
     return MISSING_ATOM_MAP
 
 
-def remove_atom_map(molecule):
-    for a in molecule.GetAtoms():
-        a.SetMapIdx(0)
-
-
 def remove_atom_map(molecule, keep_map_data=True):
     """
-    Remove atom map but store it in atom data.
+    Remove atom map but store it in atom data. In place.
     Parameters
     ----------
-    molecule
-
-    Returns
-    -------
+    molecule: OEMol with map indices
+    keep_map_data: bool, optional, default True
+        If True, will store map indices in 'MapIdx' field in atom data
 
     """
     for atom in molecule.GetAtoms():
@@ -474,7 +453,7 @@ def remove_atom_map(molecule, keep_map_data=True):
 
 def restore_atom_map(molecule):
     """
-    Restore atom map from atom data
+    Restore atom map from atom data. In place.
     Parameters
     ----------
     molecule: OEMol
@@ -487,14 +466,16 @@ def restore_atom_map(molecule):
 
 def is_map_canonical(molecule):
     """
-    Check if map indices on molecule is in canonical order
+    Check if map indices on molecule is in canonical order.
+    Reorder atoms to be in canonical order and compare the atom order to the map indices.
 
     Parameters
     ----------
-    molecule
+    molecule: OEMol created from the mapped SMILES
 
     Returns
     -------
+    True if canonical ordered atoms match map indices. False otherwise.
 
     """
     molcopy = oechem.OEMol(molecule)

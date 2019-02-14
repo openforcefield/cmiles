@@ -224,10 +224,52 @@ def test_get_atom_map(toolkit, toolkit_name):
             a.SetAtomMapNum(a.GetIdx()+1)
         mapped_smiles = Chem.MolToSmiles(mol)
 
-    atom_map = utils.get_atom_map(mol, mapped_smiles=mapped_smiles)
+    atom_map = utils.get_atom_map(mol, mapped_smiles=mapped_smiles, strict=False)
 
     for m in atom_map:
         assert m == (atom_map[m] + 1)
+
+@using_openeye
+@pytest.mark.parametrize('smiles', ['OCCO', 'C(CO)O', '[H]C([H])(C([H])([H])O[H])O[H]',
+                                    '[H:5][C:1]([H:6])([C:2]([H:7])([H:8])[O:4][H:10])[O:3][H:9]',
+                                   '[H][O][C]([H])([H])[C]([H])([H])[O][H]',
+                                    '[O:1]([C:3]([C:4]([O:2][H:6])([H:9])[H:10])([H:7])[H:8])[H:5]'])
+def test_atom_map(smiles):
+    """Test that atom map orders geometry the same way every time no matter the SMILES used to create the molecule"""
+    import cmiles
+    mapped_smiles = '[H:5][C:1]([H:6])([C:2]([H:7])([H:8])[O:4][H:10])[O:3][H:9]'
+    mol_id_oe = cmiles.to_molecule_id(mapped_smiles, canonicalization='openeye')
+    oemol = utils.load_molecule(mapped_smiles, toolkit='openeye')
+    mapped_symbols = ['C', 'C', 'O', 'O', 'H', 'H', 'H', 'H', 'H', 'H']
+    mapped_geometry = [-1.6887193912042044, 0.8515190939276903, 0.8344587822904272, -4.05544806361675, -0.3658269566455062,
+                       -0.22848169646448416, -1.6111611950422127, 0.4463128276938808, 3.490617694146934, -3.97756355964586,
+                       -3.0080934853087373, 0.25948499322223956, -1.6821252026076652, 2.891135395246369, 0.4936556190978574,
+                       0.0, 0.0, 0.0, -4.180315034973438, -0.09210893239246959, -2.2748227320305525, -5.740516456782416,
+                       0.4115539217904015, 0.6823267491485907, -0.07872657410528058, 1.2476492272884379, 4.101615944163073,
+                       -5.514569080545831, -3.7195945404657222, -0.4441653010509862]
+
+    mol = cmiles.utils.load_molecule(smiles, toolkit='openeye')
+    if not utils.has_explicit_hydrogen(mol):
+        mol = utils.add_explicit_hydrogen(mol)
+    atom_map = utils.get_atom_map(mol, mapped_smiles=mapped_smiles)
+    # use the atom map to add coordinates to molecule. First reorder mapped geometry to order in molecule
+    mapped_coords = np.array(mapped_geometry, dtype=float).reshape(int(len(mapped_geometry)/3), 3)
+    coords = np.zeros((mapped_coords.shape))
+    for m in atom_map:
+        coords[atom_map[m]] = mapped_coords[m-1]
+    # flatten
+    coords = coords.flatten()
+    # convert to Angstroms
+    coords = coords*utils.BOHR_2_ANGSTROM
+    # set coordinates in oemol
+    mol.SetCoords(coords)
+    mol.SetDimension(3)
+
+    # Get new atom map
+    atom_map = utils.get_atom_map(mol, mapped_smiles)
+    symbols, geometry = _cmiles_oe.get_map_ordered_geometry(mol, atom_map)
+    assert geometry == mapped_geometry
+    assert symbols == mapped_symbols
 
 
 @pytest.mark.parametrize('mapped_smiles, expected_table', [('[H:5][C:1]([H:6])([H:7])[C:3]([H:11])([H:12])[C:4]([H:13])([H:14])[C:2]([H:8])([H:9])[H:10]',
@@ -242,7 +284,9 @@ def test_get_atom_map(toolkit, toolkit_name):
 def test_connectivity(mapped_smiles, expected_table, toolkit):
     """Test connectivity table"""
     molecule = utils.load_molecule(mapped_smiles, toolkit)
-    atom_map = utils.get_atom_map(molecule, mapped_smiles=mapped_smiles)
+    if not utils.has_explicit_hydrogen(molecule):
+        molecule = utils.add_explicit_hydrogen(molecule)
+    atom_map = utils.get_atom_map(molecule, mapped_smiles=mapped_smiles, strict=False)
     connectivity_table = utils.get_connectivity_table(molecule, atom_map)
 
     for bond in connectivity_table:
@@ -328,9 +372,14 @@ def test_get_atom_map_mapped_smiles(toolkit):
     smiles_1 = '[H]C([H])(C([H])([H])O[H])O[H]'
     smiles_2 = '[H:5][C:1]([H:6])([C:2]([H:7])([H:8])[O:4][H:10])[O:3][H:9]'
     mol_1 = utils.load_molecule(smiles_1, toolkit=toolkit)
+    if not utils.has_explicit_hydrogen(mol_1):
+        mol_1 = utils.add_explicit_hydrogen(mol_1)
     mol_2 = utils.load_molecule(smiles_2, toolkit=toolkit)
+    if not utils.has_explicit_hydrogen(mol_2):
+        mol_2 = utils.add_explicit_hydrogen(mol_2)
 
-    assert utils.get_atom_map(mol_2, mapped_smiles=smiles_2)
+    atom_map = utils.get_atom_map(mol_2, mapped_smiles=smiles_2, strict=False)
+    assert len(atom_map) == 10
     with pytest.raises(ValueError):
         utils.get_atom_map(mol_1, mapped_smiles=smiles_1)
 
@@ -348,3 +397,38 @@ def test_remove_restore_atom_map(toolkit):
     assert utils.has_atom_map(mapped_mol) == True
     assert utils.is_missing_atom_map(mapped_mol) == False
 
+
+@pytest.mark.parametrize('toolkit', toolkits_name)
+@pytest.mark.parametrize('smiles, canonicalization', [('[H:5][C:1]([H:6])([C:2]([H:7])([H:8])[O:4][H:10])[O:3][H:9]', 'openeye'),
+                                                      ('[O:1]([C:3]([C:4]([O:2][H:6])([H:9])[H:10])([H:7])[H:8])[H:5]', 'rdkit')])
+def test_is_map_canonical(toolkit, smiles, canonicalization):
+    molecule = utils.load_molecule(smiles, toolkit)
+
+    canonical = utils.is_map_canonical(molecule)
+    if toolkit == canonicalization:
+        assert canonical
+    else:
+        assert not canonical
+
+
+@pytest.mark.parametrize('toolkit', toolkits_name)
+@pytest.mark.parametrize('smiles', ['COC(C)c1c(Cl)ccc(F)c1Cl',
+                                 '[H:3][C:1]([H:4])([H:5])[C:2]([H:6])([H:7])[H:8]',
+                         '[H:5][C:1]([H:6])([C:2]([H:7])([H:8])[O:4][H:10])[O:3][H:9]',
+                        '[O:1]([C:3]([C:4]([O:2][H:6])([H:9])[H:10])([H:7])[H:8])[H:5]' ])
+def test_atom_order_in_mol_copy(toolkit, smiles):
+    """Test that atom orders do not change when copying molecule"""
+    import copy
+    mol = utils.load_molecule(smiles, toolkit=toolkit)
+    if not utils.has_explicit_hydrogen(mol):
+        mol = utils.add_explicit_hydrogen(mol)
+    molcopy = copy.deepcopy(mol)
+    for a1, a2 in zip(mol.GetAtoms(), molcopy.GetAtoms()):
+        if toolkit == 'openeye':
+            assert a1.GetIdx() == a2.GetIdx()
+            assert a1.GetName() == a2.GetName()
+            assert a1.GetMapIdx() == a2.GetMapIdx()
+        if toolkit == 'rdkit':
+            assert a1.GetIdx() == a2.GetIdx()
+            assert a1.GetAtomMapNum() == a2.GetAtomMapNum()
+            assert a1.GetSmarts() == a2.GetSmarts()

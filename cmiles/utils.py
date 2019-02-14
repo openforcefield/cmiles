@@ -191,7 +191,7 @@ def mol_to_hill_molecular_formula(molecule):
     return "".join(hill_sorted)
 
 
-def mol_to_map_ordered_qcschema(molecule, molecule_ids, multiplicity=1):
+def mol_to_map_ordered_qcschema(molecule, molecule_ids, multiplicity=1, **kwargs):
     """
     Genereate JSON serialize following qc-schema specs (https://molssi-qc-schema.readthedocs.io/en/latest/index.html#)
     Geometry, symbols and connectivity table ordered according to map indices in mapped
@@ -215,7 +215,7 @@ def mol_to_map_ordered_qcschema(molecule, molecule_ids, multiplicity=1):
     """
     toolkit = _set_toolkit(molecule)
     mapped_smiles = molecule_ids['canonical_isomeric_explicit_hydrogen_mapped_smiles']
-    atom_map = toolkit.get_atom_map(molecule, mapped_smiles)
+    atom_map = toolkit.get_atom_map(molecule, mapped_smiles, **kwargs)
 
     connectivity = get_connectivity_table(molecule, atom_map)
     symbols, geometry = toolkit.get_map_ordered_geometry(molecule, atom_map)
@@ -227,7 +227,7 @@ def mol_to_map_ordered_qcschema(molecule, molecule_ids, multiplicity=1):
     return qcschema_mol
 
 
-def get_atom_map(molecule, **kwargs):
+def get_atom_map(molecule, mapped_smiles, **kwargs):
     """
     Get mapping of map index -> atom index
 
@@ -245,7 +245,7 @@ def get_atom_map(molecule, **kwargs):
 
     """
     toolkit = _set_toolkit(molecule)
-    atom_map = toolkit.get_atom_map(molecule, **kwargs)
+    atom_map = toolkit.get_atom_map(molecule, mapped_smiles, **kwargs)
     return atom_map
 
 
@@ -335,6 +335,24 @@ def is_missing_atom_map(molecule):
     return toolkit.is_missing_atom_map(molecule)
 
 
+def is_map_canonical(molecule):
+    """
+    Check if any atom in molecule is missing atom map index
+
+    Parameters
+    ----------
+    molecule:
+        oechem.Mol or rdkit.Chem.Mol
+
+    Returns
+    -------
+    True or False
+
+    """
+    toolkit = _set_toolkit(molecule)
+    return toolkit.is_map_canonical(molecule)
+
+
 def remove_atom_map(molecule):
     """
     Remove atom map from molecule in place
@@ -399,6 +417,21 @@ def has_explicit_hydrogen(molecule):
     """
     toolkit = _set_toolkit(molecule)
     return toolkit.has_explicit_hydrogen(molecule)
+
+
+def add_explicit_hydrogen(molecule):
+    """
+    Add explicit hydrogen to molecule
+    Parameters
+    ----------
+    molecule
+
+    Returns
+    -------
+
+    """
+    toolkit = _set_toolkit(molecule)
+    return toolkit.add_explicit_hydrogen(molecule)
 
 
 def get_charge(molecule):

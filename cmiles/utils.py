@@ -353,13 +353,15 @@ def is_map_canonical(molecule):
     return toolkit.is_map_canonical(molecule)
 
 
-def remove_atom_map(molecule):
+def remove_atom_map(molecule, keep_map_data=True):
     """
     Remove atom map from molecule in place
     Parameters
     ----------
     molecule
         oechem.OEMol or rdkit.Chem.Mol
+    keep_map_data: bool, optional, default True
+        If True, will save map indices in atom data
 
     """
     toolkit = _set_toolkit(molecule)

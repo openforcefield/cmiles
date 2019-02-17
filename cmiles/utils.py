@@ -4,6 +4,7 @@ Utility functions for cmiles generator
 import numpy as np
 import copy
 import collections
+import warnings
 
 try:
     from rdkit import Chem
@@ -379,6 +380,8 @@ def restore_atom_map(molecule):
     """
     toolkit = _set_toolkit(molecule)
     toolkit.restore_atom_map(molecule)
+    if not has_atom_map(molecule):
+        warnings.warn("There were no atom maps in atom data to restore")
 
 
 def has_stereo_defined(molecule):

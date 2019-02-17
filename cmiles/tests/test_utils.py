@@ -397,6 +397,11 @@ def test_remove_restore_atom_map(toolkit):
     assert utils.has_atom_map(mapped_mol) == True
     assert utils.is_missing_atom_map(mapped_mol) == False
 
+    smiles = 'OCCO'
+    mol = utils.load_molecule(smiles, toolkit=toolkit)
+    with pytest.warns(UserWarning):
+        utils.restore_atom_map(mol)
+
 
 @pytest.mark.parametrize('toolkit', toolkits_name)
 @pytest.mark.parametrize('smiles, canonicalization', [('[H:5][C:1]([H:6])([C:2]([H:7])([H:8])[O:4][H:10])[O:3][H:9]', 'openeye'),

@@ -224,7 +224,7 @@ def test_get_atom_map(toolkit, toolkit_name):
             a.SetAtomMapNum(a.GetIdx()+1)
         mapped_smiles = Chem.MolToSmiles(mol)
 
-    atom_map = utils.get_atom_map(mol, mapped_smiles=mapped_smiles, strict=False)
+    atom_map = utils.get_atom_map(mol, mapped_smiles=mapped_smiles)
 
     for m in atom_map:
         assert m == (atom_map[m] + 1)
@@ -234,40 +234,23 @@ def test_get_atom_map(toolkit, toolkit_name):
                                     '[H:5][C:1]([H:6])([C:2]([H:7])([H:8])[O:4][H:10])[O:3][H:9]',
                                    '[H][O][C]([H])([H])[C]([H])([H])[O][H]',
                                     '[O:1]([C:3]([C:4]([O:2][H:6])([H:9])[H:10])([H:7])[H:8])[H:5]'])
-def test_atom_map(smiles):
-    """Test that atom map orders geometry the same way every time no matter the SMILES used to create the molecule"""
+def test_geometry_order(smiles):
+    """Test that geometry is ordered the same way every time no matter the SMILES used to create the molecule"""
     import cmiles
+    from .utils import generate_conformers
     mapped_smiles = '[H:5][C:1]([H:6])([C:2]([H:7])([H:8])[O:4][H:10])[O:3][H:9]'
     mol_id_oe = cmiles.to_molecule_id(mapped_smiles, canonicalization='openeye')
     oemol = utils.load_molecule(mapped_smiles, toolkit='openeye')
-    mapped_symbols = ['C', 'C', 'O', 'O', 'H', 'H', 'H', 'H', 'H', 'H']
-    mapped_geometry = [-1.6887193912042044, 0.8515190939276903, 0.8344587822904272, -4.05544806361675, -0.3658269566455062,
-                       -0.22848169646448416, -1.6111611950422127, 0.4463128276938808, 3.490617694146934, -3.97756355964586,
-                       -3.0080934853087373, 0.25948499322223956, -1.6821252026076652, 2.891135395246369, 0.4936556190978574,
-                       0.0, 0.0, 0.0, -4.180315034973438, -0.09210893239246959, -2.2748227320305525, -5.740516456782416,
-                       0.4115539217904015, 0.6823267491485907, -0.07872657410528058, 1.2476492272884379, 4.101615944163073,
-                       -5.514569080545831, -3.7195945404657222, -0.4441653010509862]
+    # Generate canonical geometry
+    conf = generate_conformers(oemol, canonical_order=True, max_confs=1)
+    mapped_symbols, mapped_geometry = _cmiles_oe.get_map_ordered_geometry(conf, mapped_smiles)
 
+    # Generate new molecule from other SMILES
     mol = cmiles.utils.load_molecule(smiles, toolkit='openeye')
     if not utils.has_explicit_hydrogen(mol):
         mol = utils.add_explicit_hydrogen(mol)
-    atom_map = utils.get_atom_map(mol, mapped_smiles=mapped_smiles)
-    # use the atom map to add coordinates to molecule. First reorder mapped geometry to order in molecule
-    mapped_coords = np.array(mapped_geometry, dtype=float).reshape(int(len(mapped_geometry)/3), 3)
-    coords = np.zeros((mapped_coords.shape))
-    for m in atom_map:
-        coords[atom_map[m]] = mapped_coords[m-1]
-    # flatten
-    coords = coords.flatten()
-    # convert to Angstroms
-    coords = coords*utils.BOHR_2_ANGSTROM
-    # set coordinates in oemol
-    mol.SetCoords(coords)
-    mol.SetDimension(3)
-
-    # Get new atom map
-    atom_map = utils.get_atom_map(mol, mapped_smiles)
-    symbols, geometry = _cmiles_oe.get_map_ordered_geometry(mol, atom_map)
+    conf_2 = generate_conformers(mol, canonical_order=True, max_confs=1)
+    symbols, geometry = _cmiles_oe.get_map_ordered_geometry(conf_2, mapped_smiles)
     assert geometry == mapped_geometry
     assert symbols == mapped_symbols
 
@@ -286,8 +269,11 @@ def test_connectivity(mapped_smiles, expected_table, toolkit):
     molecule = utils.load_molecule(mapped_smiles, toolkit)
     if not utils.has_explicit_hydrogen(molecule):
         molecule = utils.add_explicit_hydrogen(molecule)
-    atom_map = utils.get_atom_map(molecule, mapped_smiles=mapped_smiles, strict=False)
-    connectivity_table = utils.get_connectivity_table(molecule, atom_map)
+    if toolkit == 'rdkit':
+        atom_map = utils.get_atom_map(molecule, mapped_smiles=mapped_smiles, strict=False)
+    if toolkit == 'openeye':
+        _cmiles_oe.canonical_order_atoms(molecule)
+    connectivity_table = utils.get_connectivity_table(molecule)
 
     for bond in connectivity_table:
         xi = np.isin(expected_table, bond[:2])
@@ -315,17 +301,22 @@ def test_map_order_geometry(permute, toolkit, toolkit_name):
     }
     mol = utils.load_molecule(hooh, toolkit=toolkit_name, permute_xyz=permute)
     mapped_smiles = utils.mol_to_smiles(mol, isomeric=True, explicit_hydrogen=True, mapped=True)
-    atom_map = utils.get_atom_map(mol, mapped_smiles=mapped_smiles, strict=permute)
-    symbols, geometry = toolkit.get_map_ordered_geometry(mol, atom_map)
-
-    json_geom = np.asarray(hooh['geometry']).reshape(int(len(geometry)/3), 3)
-    geometry_array = np.asarray(geometry).reshape(int(len(geometry)/3), 3)
-
-    for m in atom_map:
-        for i in range(3):
-            assert json_geom[atom_map[m]][i] == pytest.approx(geometry_array[m-1][i], 0.0000001)
+    atom_map = utils.get_atom_map(mol, mapped_smiles=mapped_smiles)
     if not permute:
-        assert hooh['geometry'] == pytest.approx(geometry, 0.0000001)
+        # Atom map should match JSON and no reordering is needed
+        for m in atom_map:
+            assert m == atom_map[m] + 1
+    if permute:
+        symbols, geometry = toolkit.get_map_ordered_geometry(mol, mapped_smiles)
+
+        json_geom = np.asarray(hooh['geometry']).reshape(int(len(geometry)/3), 3)
+        geometry_array = np.asarray(geometry).reshape(int(len(geometry)/3), 3)
+
+        for m in atom_map:
+            for i in range(3):
+                assert json_geom[atom_map[m]][i] == pytest.approx(geometry_array[m-1][i], 0.0000001)
+    # if not permute:
+    #     assert hooh['geometry'] == pytest.approx(geometry, 0.0000001)
 
 
 @pytest.mark.parametrize('toolkit', toolkits_name)
@@ -354,7 +345,7 @@ def test_permute_json(toolkit):
         'connectivity': [[0, 1, 1], [1, 2, 1], [2, 3, 1]],
         'molecular_multiplicity': 1
     }
-    mol = utils.mol_from_json(hooh, toolkit=toolkit)
+    mol = utils.mol_from_json(hooh, toolkit=toolkit, permute_xyz=True)
     atom_map = utils.get_atom_map(mol, mapped_smiles='[H:3][O:1][O:2][H:4]')
     permuted_hooh = utils.permute_qcschema(hooh, molecule_ids, toolkit=toolkit)
 
@@ -378,10 +369,10 @@ def test_get_atom_map_mapped_smiles(toolkit):
     if not utils.has_explicit_hydrogen(mol_2):
         mol_2 = utils.add_explicit_hydrogen(mol_2)
 
-    atom_map = utils.get_atom_map(mol_2, mapped_smiles=smiles_2, strict=False)
+    atom_map = utils.get_atom_map(mol_2, mapped_smiles=smiles_2)
     assert len(atom_map) == 10
-    with pytest.raises(ValueError):
-        utils.get_atom_map(mol_1, mapped_smiles=smiles_1)
+    # with pytest.raises(ValueError):
+    #     utils.get_atom_map(mol_1, mapped_smiles=smiles_1)
 
 
 @pytest.mark.parametrize('toolkit', toolkits_name)
@@ -403,17 +394,18 @@ def test_remove_restore_atom_map(toolkit):
         utils.restore_atom_map(mol)
 
 
-@pytest.mark.parametrize('toolkit', toolkits_name)
-@pytest.mark.parametrize('smiles, canonicalization', [('[H:5][C:1]([H:6])([C:2]([H:7])([H:8])[O:4][H:10])[O:3][H:9]', 'openeye'),
-                                                      ('[O:1]([C:3]([C:4]([O:2][H:6])([H:9])[H:10])([H:7])[H:8])[H:5]', 'rdkit')])
-def test_is_map_canonical(toolkit, smiles, canonicalization):
-    molecule = utils.load_molecule(smiles, toolkit)
-
-    canonical = utils.is_map_canonical(molecule)
-    if toolkit == canonicalization:
-        assert canonical
-    else:
-        assert not canonical
+# @pytest.mark.parametrize('toolkit', toolkits_name)
+# @pytest.mark.parametrize('smiles, canonicalization', [('[H:5][C:1]([H:6])([C:2]([H:7])([H:8])[O:4][H:10])[O:3][H:9]', 'openeye'),
+#                                                       ('[O:1]([C:3]([C:4]([O:2][H:6])([H:9])[H:10])([H:7])[H:8])[H:5]', 'rdkit'),
+#                                                       ('[H:7][C:1]1([C:2]([C:4]([C:5]([C:3]1([H:11])[H:12])([H:15])[C:6]([H:16])([H:17])[H:18])([H:13])[H:14])([H:9])[H:10])[H:8]', 'openeye')])
+# def test_is_map_canonical(toolkit, smiles, canonicalization):
+#     molecule = utils.load_molecule(smiles, toolkit)
+#
+#     canonical = utils.is_map_canonical(molecule)
+#     if toolkit == canonicalization:
+#         assert canonical
+#     else:
+#         assert not canonical
 
 
 @pytest.mark.parametrize('toolkit', toolkits_name)
@@ -437,3 +429,40 @@ def test_atom_order_in_mol_copy(toolkit, smiles):
             assert a1.GetIdx() == a2.GetIdx()
             assert a1.GetAtomMapNum() == a2.GetAtomMapNum()
             assert a1.GetSmarts() == a2.GetSmarts()
+
+
+@using_openeye
+@pytest.mark.parametrize('smiles', ['CC1CCCC1', 'OCCO', 'C[C@H](C1CCCC1)n2cc(cn2)c3c4cc[nH]c4ncn3'])
+def test_canonical_geometry_order(smiles):
+    from .utils import generate_conformers
+    mol = utils.load_molecule(smiles, toolkit='openeye')
+    mol = utils.add_explicit_hydrogen(mol)
+
+    # Generate conformer
+    conf_canonical = generate_conformers(mol, canonical_order=True)
+    conf = generate_conformers(mol, canonical_order=False)
+
+    assert _cmiles_oe.is_goemetry_canonical_order(conf_canonical) == True
+    with pytest.warns(UserWarning):
+        assert _cmiles_oe.is_goemetry_canonical_order(conf) == False
+
+
+@using_openeye
+@pytest.mark.parametrize('smiles, output', [('[H:7][C:1]1([C:2]([C:4]([C:5]([C:3]1([H:11])[H:12])([H:15])[C:6]([H:16])([H:17])[H:18])([H:13])[H:14])([H:9])[H:10])[H:8]', True),
+                                    ('[H:9][C:2]1([C:1]([C:3]([C:5]([C:4]1([H:13])[H:14])([H:15])[C:6]([H:16])([H:17])[H:18])([H:11])[H:12])([H:7])[H:8])[H:10]', False),
+                                    ('[H:5][C:1]([H:6])([C:2]([H:7])([H:8])[O:4][H:10])[O:3][H:9]', True),
+                                    ('[H:7][C:2]([H:8])([C:1]([H:5])([H:6])[O:3][H:9])[O:4][H:10]', False)])
+def test_canonical_mapped_smiles(smiles, output):
+    assert _cmiles_oe.is_mapped_smiles_canonical(smiles) == output
+
+@using_openeye
+@pytest.mark.parametrize('smiles', ['[H:7][C:1]1([C:2]([C:4]([C:5]([C:3]1([H:11])[H:12])([H:15])[C:6]([H:16])([H:17])[H:18])([H:13])[H:14])([H:9])[H:10])[H:8]',
+                                    '[H:9][C:2]1([C:1]([C:3]([C:5]([C:4]1([H:13])[H:14])([H:15])[C:6]([H:16])([H:17])[H:18])([H:11])[H:12])([H:7])[H:8])[H:10]',
+                                    '[H:5][C:1]([H:6])([C:2]([H:7])([H:8])[O:4][H:10])[O:3][H:9]',
+                                    '[H:7][C:2]([H:8])([C:1]([H:5])([H:6])[O:3][H:9])[O:4][H:10]'])
+def test_canonical_atom_order(smiles):
+    mol = oechem.OEMol()
+    oechem.OESmilesToMol(mol, smiles)
+    assert _cmiles_oe.is_molecule_canonical_order(mol) == False
+    _cmiles_oe.canonical_order_atoms(mol)
+    assert _cmiles_oe.is_molecule_canonical_order(mol) == True

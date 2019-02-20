@@ -216,11 +216,10 @@ def mol_to_map_ordered_qcschema(molecule, molecule_ids, multiplicity=1, **kwargs
     """
     toolkit = _set_toolkit(molecule)
     mapped_smiles = molecule_ids['canonical_isomeric_explicit_hydrogen_mapped_smiles']
-    #atom_map = toolkit.get_atom_map(molecule, mapped_smiles, **kwargs)
+    atom_map = toolkit.get_atom_map(molecule, mapped_smiles, **kwargs)
 
-    symbols, geometry = toolkit.get_map_ordered_geometry(molecule, mapped_smiles)
-    connectivity = get_connectivity_table(molecule)
-
+    connectivity = get_connectivity_table(molecule, atom_map)
+    symbols, geometry = toolkit.get_map_ordered_geometry(molecule, atom_map)
     charge = get_charge(molecule)
 
     qcschema_mol = {'symbols': symbols, 'geometry': geometry, 'connectivity': connectivity,
@@ -251,7 +250,7 @@ def get_atom_map(molecule, mapped_smiles, **kwargs):
     return atom_map
 
 
-def get_connectivity_table(molecule):
+def get_connectivity_table(molecule, atom_map):
     """
     Generate connectivity table
 
@@ -271,8 +270,8 @@ def get_connectivity_table(molecule):
     """
 
     toolkit = _set_toolkit(molecule)
-    #inverse_map = dict(zip(atom_map.values(), atom_map.keys()))
-    return toolkit.get_connectivity_table(molecule)
+    inverse_map = dict(zip(atom_map.values(), atom_map.keys()))
+    return toolkit.get_connectivity_table(molecule, inverse_map)
 
 
 def permute_qcschema(json_mol, molecule_ids, **kwargs):
@@ -295,7 +294,7 @@ def permute_qcschema(json_mol, molecule_ids, **kwargs):
         Also includes `identifiers` field with cmiles generated identifiers.
 
     """
-    molecule = mol_from_json(json_mol, permute_xyz=True)
+    molecule = mol_from_json(json_mol, **kwargs)
     ordered_qcschema = mol_to_map_ordered_qcschema(molecule, molecule_ids, json_mol['molecular_multiplicity'])
 
     return ordered_qcschema

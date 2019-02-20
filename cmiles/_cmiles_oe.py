@@ -46,13 +46,10 @@ def mol_from_json(symbols, connectivity, geometry, permute_xyz=False):
     molecule.SetCoords(oechem.OEFloatArray(geometry))
     molecule.SetDimension(3)
 
-    geom_tag = oechem.OEGetTag("json_geometry")
-    if permute_xyz:
-        # Add tag that the geometry is from JSON but can be changed.
-        molecule.SetData(geom_tag, False)
-    else:
+    if not permute_xyz:
+        # Add tag that the geometry is from JSON and shouldn't be changed.
+        geom_tag = oechem.OEGetTag("json_geometry")
         molecule.SetData(geom_tag, True)
-
     oechem.OEDetermineConnectivity(molecule)
     oechem.OEFindRingAtomsAndBonds(molecule)
     oechem.OEPerceiveBondOrders(molecule)
@@ -182,7 +179,7 @@ def mol_to_smiles(molecule, isomeric=True, explicit_hydrogen=True, mapped=True):
     return oechem.OEMolToSmiles(molecule)
 
 
-def get_connectivity_table(molecule):
+def get_connectivity_table(molecule, inverse_map):
     """
 
     Parameters
@@ -194,20 +191,15 @@ def get_connectivity_table(molecule):
     -------
 
     """
-    # Check that molecule is in canonical order
-    if not is_molecule_canonical_order(molecule):
-        raise ValueError("Molecule atoms are not in canonical order")
-    connectivity_table = [[bond.GetBgnIdx(), bond.GetEndIdx(), bond.GetOrder()] for bond
+    connectivity_table = [[inverse_map[bond.GetBgnIdx()]-1, inverse_map[bond.GetEndIdx()]-1, bond.GetOrder()] for bond
                           in molecule.GetBonds()]
 
     return connectivity_table
 
 
-def get_atom_map(molecule, mapped_smiles):
+def get_atom_map(molecule, mapped_smiles, strict=True):
     """
     Map tag in mapped SMILES to atom idx
-    This uses a substructure search. For a symmetrical molecule, there are as many matches as symmetries and atom maps can flip.
-    It should only be used if the mapped SMILES was not generated with openeye.
 
     Parameters
     ----------
@@ -227,63 +219,65 @@ def get_atom_map(molecule, mapped_smiles):
     if not has_explicit_hydrogen(molecule):
         raise ValueError("Molecule must have explicit hydrogen")
 
-    # # Check that map SMILES has map indices on all atoms and that it's in canonical order.
-    # mapped_mol = oechem.OEMol()
-    # oechem.OESmilesToMol(mapped_mol, mapped_smiles)
-    # # Check for explicit hydrogen
-    # if not has_explicit_hydrogen(mapped_mol):
-    #     raise ValueError("Mapped SMILES must include explicit hydrogen")
-    #
-    # # Check that all atoms have map indices
-    # if is_missing_atom_map(mapped_mol):
-    #     # mapped SMILES must have map index on every atom
-    #     raise ValueError("Mapped SMILES must have map indices for all atoms and hydrogen")
-    #
-    # # check canonical order of atom map
-    # if not is_map_canonical(mapped_mol):
-    #     if strict:
-    #         raise ValueError("Map indices on mapped SMILES are not in openeye canonical order. If you set strict to False, "
-    #                          "you can get an atom map but only do this if you understand what you are doing.")
-    #     # map in mapped SMILES is not canonical - it might come from RDKit
-    #     can_mapped_smiles = False
-    # else:
-    #     can_mapped_smiles = True
-    #
-    # if can_mapped_smiles:
-    #     # Mapped SMILES is canonical. Get atom map from canonical ordered molecule
-    #     molcopy = oechem.OEMol(molecule)
-    #     # store atom indices in molecule data
-    #     for atom in molcopy.GetAtoms():
-    #         atom.SetData('atom_idx', atom.GetIdx())
-    #     canonical_order_atoms(molcopy)
-    #     atom_map = {}
-    #     for atom in molcopy.GetAtoms():
-    #         atom_map[atom.GetIdx()+1] = atom.GetData('atom_idx')
-    # elif not can_mapped_smiles and not strict:
-    #     warnings.warn("Using substructure search to get atom map. If your molecule is symmetric, more than one atom mapping"
-    #                   " is possible and the order of the geometry can flip.")
+    # Check that map SMILES has map indices on all atoms and that it's in canonical order.
+    mapped_mol = oechem.OEMol()
+    oechem.OESmilesToMol(mapped_mol, mapped_smiles)
+    # Check for explicit hydrogen
+    if not has_explicit_hydrogen(mapped_mol):
+        raise ValueError("Mapped SMILES must include explicit hydrogen")
+
+    # Check that all atoms have map indices
+    if is_missing_atom_map(mapped_mol):
+        # mapped SMILES must have map index on every atom
+        raise ValueError("Mapped SMILES must have map indices for all atoms and hydrogen")
+
+    # check canonical order of atom map
+    if not is_map_canonical(mapped_mol):
+        if strict:
+            raise ValueError("Map indices on mapped SMILES are not in openeye canonical order. If you set strict to False, "
+                             "you can get an atom map but only do this if you understand what you are doing.")
+        # map in mapped SMILES is not canonical - it might come from RDKit
+        can_mapped_smiles = False
+    else:
+        can_mapped_smiles = True
+
+    if can_mapped_smiles:
+        # Mapped SMILES is canonical. Get atom map from canonical ordered molecule
+        molcopy = oechem.OEMol(molecule)
+        # store atom indices in molecule data
+        for atom in molcopy.GetAtoms():
+            atom.SetData('atom_idx', atom.GetIdx())
+        canonical_order_atoms(molcopy)
+        atom_map = {}
+        for atom in molcopy.GetAtoms():
+            atom_map[atom.GetIdx()+1] = atom.GetData('atom_idx')
+    elif not can_mapped_smiles and not strict:
+        warnings.warn("Using substructure search to get atom map. If your molecule is symmetric, more than one atom mapping"
+                      " is possible and the order of the geometry can flip.")
         # Use substructure search
-    ss = oechem.OESubSearch(mapped_smiles)
-    oechem.OEPrepareSearch(molecule, ss)
-    ss.SetMaxMatches(1)
+        ss = oechem.OESubSearch(mapped_smiles)
+        oechem.OEPrepareSearch(molecule, ss)
+        ss.SetMaxMatches(1)
 
-    atom_map = {}
-    matches = [m for m in ss.Match(molecule)]
-    if not matches:
-        raise RuntimeError("MCSS failed for {}, smiles: {}".format(oechem.OEMolToSmiles(molecule), mapped_smiles))
-    for match in matches:
-        for ma in match.GetAtoms():
-            atom_map[ma.pattern.GetMapIdx()] = ma.target.GetIdx()
+        atom_map = {}
+        matches = [m for m in ss.Match(molecule)]
+        if not matches:
+            raise RuntimeError("MCSS failed for {}, smiles: {}".format(oechem.OEMolToSmiles(molecule), mapped_smiles))
+        for match in matches:
+            for ma in match.GetAtoms():
+                atom_map[ma.pattern.GetMapIdx()] = ma.target.GetIdx()
 
-    # sanity check
-    mol = oechem.OEGraphMol()
-    oechem.OESubsetMol(mol, match, True)
-    print("Match SMILES: {}".format(oechem.OEMolToSmiles(mol)))
+        # sanity check
+        mol = oechem.OEGraphMol()
+        oechem.OESubsetMol(mol, match, True)
+        print("Match SMILES: {}".format(oechem.OEMolToSmiles(mol)))
+    else:
+        raise RuntimeError("Mapped indices on mapped SMILES are not canonical.")
 
     return atom_map
 
 
-def get_map_ordered_geometry(molecule, mapped_smiles):
+def get_map_ordered_geometry(molecule, atom_map):
     """
 
     Parameters
@@ -307,31 +301,11 @@ def get_map_ordered_geometry(molecule, mapped_smiles):
         if molecule.GetMaxConfIdx() != 1:
             raise Warning("The molecule must have at least and at most 1 conformation")
 
-    # Check for JSON geometry
-    try:
-        json_geometry = molecule.GetData('json_geometry')
-    except ValueError:
-        json_geometry = None
-
-    # Check that map SMILES and order in geometry all match up
-    if not is_mapped_smiles_canonical(mapped_smiles):
-        raise ValueError("Map indices on SMILES are not canonical")
-    if not is_goemetry_canonical_order(molecule):
-        if json_geometry is None:
-            raise ValueError("Geometry was not generated with omega canonical order set to True")
-    if not is_molecule_canonical_order(molecule):
-        if json_geometry is None:
-            raise ValueError("molecule atoms are not in canonical order")
-        elif json_geometry:
-            pass
-        elif json_geometry is False:
-             canonical_order_atoms(molecule)
-
     symbols = []
     geometry = []
-    #for mapping in range(1, molecule.NumAtoms()+1):
-    for atom in molecule.GetAtoms():
-        #atom = molecule.GetAtom(oechem.OEHasAtomIdx(idx))
+    for mapping in range(1, molecule.NumAtoms()+1):
+        idx = atom_map[mapping]
+        atom = molecule.GetAtom(oechem.OEHasAtomIdx(idx))
         syb = oechem.OEGetAtomicSymbol(atom.GetAtomicNum())
         symbols.append(syb)
         for i in range(3):
@@ -495,103 +469,25 @@ def restore_atom_map(molecule):
             atom.SetMapIdx(atom.GetData('MapIdx'))
 
 
-# def is_map_canonical(molecule):
-#     """
-#     Check if map indices on molecule is in canonical order.
-#     Reorder atoms to be in canonical order and compare the atom order to the map indices.
-#
-#     Parameters
-#     ----------
-#     molecule: OEMol created from the mapped SMILES
-#
-#     Returns
-#     -------
-#     True if canonical ordered atoms match map indices. False otherwise.
-#
-#     """
-#     molcopy = oechem.OEMol(molecule)
-#     # reorder molcopy
-#     canonical_order_atoms(molcopy, in_place=True)
-#     # Now check that map indices are +1 on atom indices
-#     for a in molcopy.GetAtoms():
-#         if a.GetMapIdx() != a.GetIdx() + 1:
-#             return False
-#     return True
-
-
-def is_mapped_smiles_canonical(mapped_smiles):
+def is_map_canonical(molecule):
     """
+    Check if map indices on molecule is in canonical order.
+    Reorder atoms to be in canonical order and compare the atom order to the map indices.
 
     Parameters
     ----------
-    mapped_smiles
+    molecule: OEMol created from the mapped SMILES
 
     Returns
     -------
-
-    """
-    mol = oechem.OEMol()
-    oechem.OESmilesToMol(mol, mapped_smiles)
-    # romove map
-    remove_atom_map(mol)
-    # Generate canonical mapped SMILES
-    if not mol_to_smiles(mol, mapped=True, explicit_hydrogen=True, isomeric=True) == mapped_smiles:
-        # This mapped SMILES was not generated by CMILES with openeye.
-        return False
-    return True
-    #
-
-
-def is_goemetry_canonical_order(molecule):
-    """
-
-    Parameters
-    ----------
-    molecule
-
-    Returns
-    -------
-
-    """
-    # Check that molecule has geometry
-    if not molecule.GetDimension() == 3:
-        raise ValueError("Molecule must have 3D coordinates")
-    molecule_copy = oechem.OEMol(molecule)
-    canonical_order_atoms(molecule_copy)
-    if not molecule.GetCoords() == molecule_copy.GetCoords():
-        # geometry was not generated with canonical order set to True
-        warnings.warn("Geometry was not generated with canonical order set to True")
-        return False
-    return True
-
-
-def is_molecule_canonical_order(molecule):
-    """
-
-    Parameters
-    ----------
-    molecule
-
-    Returns
-    -------
+    True if canonical ordered atoms match map indices. False otherwise.
 
     """
     molcopy = oechem.OEMol(molecule)
-    if has_atom_map(molcopy):
-        remove_atom_map(molcopy)
-    # Check for JSON geometry
-    try:
-        json_geometry = molcopy.GetData('json_geometry')
-        if json_geometry:
-            molcopy.SetData('json_geometry', False)
-    except ValueError:
-        pass
-    canonical_mapped_smiles = mol_to_smiles(molcopy, isomeric=True, explicit_hydrogen=True, mapped=True)
-
-    # Add map indices to molcopy
-    for atom in molcopy.GetAtoms():
-        atom.SetMapIdx(atom.GetIdx() + 1)
-    mapped_smiles = oechem.OEMolToSmiles(molcopy)
-    if not canonical_mapped_smiles == mapped_smiles:
-        return False
+    # reorder molcopy
+    canonical_order_atoms(molcopy, in_place=True)
+    # Now check that map indices are +1 on atom indices
+    for a in molcopy.GetAtoms():
+        if a.GetMapIdx() != a.GetIdx() + 1:
+            return False
     return True

@@ -228,7 +228,8 @@ def mol_to_map_ordered_qcschema(molecule, molecule_ids, multiplicity=1, **kwargs
     return qcschema_mol
 
 
-def get_atom_map(molecule, mapped_smiles, **kwargs):
+
+def get_atom_map(molecule, mapped_smiles):
     """
     Get mapping of map index -> atom index
 
@@ -246,7 +247,8 @@ def get_atom_map(molecule, mapped_smiles, **kwargs):
 
     """
     toolkit = _set_toolkit(molecule)
-    atom_map = toolkit.get_atom_map(molecule, mapped_smiles, **kwargs)
+
+    atom_map = toolkit.get_atom_map(molecule, mapped_smiles)
     return atom_map
 
 

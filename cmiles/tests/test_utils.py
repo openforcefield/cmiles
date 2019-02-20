@@ -211,8 +211,6 @@ def test_get_atom_map(toolkit, toolkit_name):
     if toolkit_name == 'openeye':
         from openeye import oechem
         oechem.OEAddExplicitHydrogens(mol)
-        # canonical order atoms
-        _cmiles_oe.canonical_order_atoms(mol, in_place=True)
         for a in mol.GetAtoms():
             a.SetMapIdx(a.GetIdx()+1)
         mapped_smiles = oechem.OEMolToSmiles(mol)
@@ -224,7 +222,8 @@ def test_get_atom_map(toolkit, toolkit_name):
             a.SetAtomMapNum(a.GetIdx()+1)
         mapped_smiles = Chem.MolToSmiles(mol)
 
-    atom_map = utils.get_atom_map(mol, mapped_smiles=mapped_smiles, strict=False)
+
+    atom_map = utils.get_atom_map(mol, mapped_smiles)
 
     for m in atom_map:
         assert m == (atom_map[m] + 1)
@@ -284,9 +283,8 @@ def test_atom_map(smiles):
 def test_connectivity(mapped_smiles, expected_table, toolkit):
     """Test connectivity table"""
     molecule = utils.load_molecule(mapped_smiles, toolkit)
-    if not utils.has_explicit_hydrogen(molecule):
-        molecule = utils.add_explicit_hydrogen(molecule)
-    atom_map = utils.get_atom_map(molecule, mapped_smiles=mapped_smiles, strict=False)
+
+    atom_map = utils.get_atom_map(molecule, mapped_smiles)
     connectivity_table = utils.get_connectivity_table(molecule, atom_map)
 
     for bond in connectivity_table:
@@ -315,7 +313,7 @@ def test_map_order_geometry(permute, toolkit, toolkit_name):
     }
     mol = utils.load_molecule(hooh, toolkit=toolkit_name, permute_xyz=permute)
     mapped_smiles = utils.mol_to_smiles(mol, isomeric=True, explicit_hydrogen=True, mapped=True)
-    atom_map = utils.get_atom_map(mol, mapped_smiles=mapped_smiles, strict=permute)
+    atom_map = utils.get_atom_map(mol, mapped_smiles)
     symbols, geometry = toolkit.get_map_ordered_geometry(mol, atom_map)
 
     json_geom = np.asarray(hooh['geometry']).reshape(int(len(geometry)/3), 3)
@@ -355,7 +353,7 @@ def test_permute_json(toolkit):
         'molecular_multiplicity': 1
     }
     mol = utils.mol_from_json(hooh, toolkit=toolkit)
-    atom_map = utils.get_atom_map(mol, mapped_smiles='[H:3][O:1][O:2][H:4]')
+    atom_map = utils.get_atom_map(mol, '[H:3][O:1][O:2][H:4]')
     permuted_hooh = utils.permute_qcschema(hooh, molecule_ids, toolkit=toolkit)
 
     json_geom = np.asarray(hooh['geometry']).reshape(int(len(hooh['geometry'])/3), 3)
@@ -377,11 +375,6 @@ def test_get_atom_map_mapped_smiles(toolkit):
     mol_2 = utils.load_molecule(smiles_2, toolkit=toolkit)
     if not utils.has_explicit_hydrogen(mol_2):
         mol_2 = utils.add_explicit_hydrogen(mol_2)
-
-    atom_map = utils.get_atom_map(mol_2, mapped_smiles=smiles_2, strict=False)
-    assert len(atom_map) == 10
-    with pytest.raises(ValueError):
-        utils.get_atom_map(mol_1, mapped_smiles=smiles_1)
 
 
 @pytest.mark.parametrize('toolkit', toolkits_name)

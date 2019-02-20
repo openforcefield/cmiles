@@ -182,8 +182,10 @@ def get_connectivity_table(molecule, inverse_map):
     return connectivity_table
 
 
-def get_atom_map(molecule, mapped_smiles=None, strict=True):
+
+def get_atom_map(molecule, mapped_smiles):
     """
+
     Parameters
     ----------
     molecule
@@ -193,49 +195,26 @@ def get_atom_map(molecule, mapped_smiles=None, strict=True):
     -------
 
     """
-     # Check if molecule has explicit hydrogen
-    if not has_explicit_hydrogen(molecule):
-        raise ValueError("Molecule must have explicit hydrogen")
-
-    # Check that map SMILES has map indices on all atoms and that it's in canonical order.
+    # Check for mapping in mapped_smiles
     mapped_mol = Chem.MolFromSmiles(mapped_smiles)
-    if is_missing_atom_map(mapped_mol):
-        raise ValueError("Mapped SMILES must have map indices for all atoms and hydrogen")
-    # check canonical order of atom map (For RDKit, only checks heavy atoms because explicit hydrogen
-    # are not added with explicit hydrogen SMILES
-    if not is_map_canonical(mapped_mol):
-        # map in mapped SMILES is not canonical - it might come from openeye
-        if strict:
-            raise ValueError("Map indices on mapped SMILES are not in rdkit canonical order. If you set strict to False, "
-                             "you can get an atom map but only do this if you understand what you are doing.")
-        can_mapped_smiles = False
-    else:
-        can_mapped_smiles = True
+    if not has_atom_map(mapped_mol):
+        raise ValueError("mapped SMILES must have map for every heavy atom and hydrogen")
+    # Check if molecule has explicit H
+    if not has_explicit_hydrogen(molecule):
+        molecule = Chem.AddHs(molecule)
+    mapped_pattern = Chem.MolFromSmarts(mapped_smiles)
+    if molecule.HasSubstructMatch(mapped_pattern):
+        idx_pattern_order = molecule.GetSubstructMatch(mapped_pattern)
 
-    if can_mapped_smiles:
-        # Mapped SMILES is canonical. Get atom map from canonical ordered molecule
-        molcopy = copy.deepcopy(molecule)
-        # store atom indices in molecule data
-        for atom in molcopy.GetAtoms():
-            atom.SetProp('_atom_idx', str(atom.GetIdx()))
-        molcopy = canonical_order_atoms(molcopy)
-        atom_map = {}
-        for atom in molcopy.GetAtoms():
-            atom_map[atom.GetAtomMapNum()] = int(atom.GetProp('_atom_idx'))
 
-    elif not can_mapped_smiles and not strict:
-        warnings.warn("Using substructure search to get atom map. If your molecule is symmetric, more than one atom mapping"
-                      " is possible and the order of the geometry can flip.")
-        mapped_pattern = Chem.MolFromSmarts(mapped_smiles)
-        if molecule.HasSubstructMatch(mapped_pattern):
-            idx_pattern_order = molecule.GetSubstructMatch(mapped_pattern)
-        else:
-            raise RuntimeError("Substrucure match failed for {}, SMARTS: {}".format(Chem.MolToSmiles(molecule), mapped_smiles))
-        atom_map = {}
-        for i, j in enumerate(idx_pattern_order):
-            atom_map[mapped_pattern.GetAtomWithIdx(i).GetAtomMapNum()] = j
+    mapped_pattern = Chem.MolFromSmarts(mapped_smiles)
+    if molecule.HasSubstructMatch(mapped_pattern):
+        idx_pattern_order = molecule.GetSubstructMatch(mapped_pattern)
     else:
-        raise RuntimeError("Mapped indices on mapped SMILES are not canonical.")
+        raise RuntimeError("Substrucure match failed for {}, SMARTS: {}".format(Chem.MolToSmiles(molecule), mapped_smiles))
+    atom_map = {}
+    for i, j in enumerate(idx_pattern_order):
+        atom_map[mapped_pattern.GetAtomWithIdx(i).GetAtomMapNum()] = j
 
     return atom_map
 

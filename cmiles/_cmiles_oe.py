@@ -1,6 +1,7 @@
 """
 
 """
+import openeye as toolkit
 from openeye import oechem
 import copy
 import warnings

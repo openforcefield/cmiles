@@ -246,7 +246,16 @@ def get_atom_map(molecule, mapped_smiles):
     # sanity check
     mol = oechem.OEGraphMol()
     oechem.OESubsetMol(mol, match, True)
-    print("Match SMILES: {}".format(oechem.OEMolToSmiles(mol)))
+    remove_atom_map(mol)
+    matched_smiles = oechem.OEMolToSmiles(mol)
+    molcopy = oechem.OEMol(molecule)
+    if has_atom_map(molcopy):
+        remove_atom_map(molcopy)
+    smiles = oechem.OEMolToSmiles(molcopy)
+    remove_atom_map(mapped_mol)
+    pattern_smiles = oechem.OEMolToSmiles(mapped_mol)
+    if not matched_smiles == smiles == pattern_smiles:
+        raise RuntimeError("Matched molecule, input molecule and mapped SMILES are not the same ")
     return atom_map
 
 

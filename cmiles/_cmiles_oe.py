@@ -1,9 +1,7 @@
 """
 
 """
-import openeye as toolkit
 from openeye import oechem
-import time
 import copy
 import warnings
 from .utils import ANGSROM_2_BOHR, _symbols
@@ -178,14 +176,16 @@ def mol_to_smiles(molecule, isomeric=True, explicit_hydrogen=True, mapped=True):
 
 def get_connectivity_table(molecule, inverse_map):
     """
-
+    Generate connectivity table for molecule using map indices from atom map
     Parameters
     ----------
-    molecule
-    inverse_map
+    molecule: oechem.OEMol
+    inverse_map: dict {atom_idx:atom_map}
 
     Returns
     -------
+    connectivity_table: list of lists
+        [[atom1, atom2, bond_order]...]
 
     """
     connectivity_table = [[inverse_map[bond.GetBgnIdx()]-1, inverse_map[bond.GetEndIdx()]-1, bond.GetOrder()] for bond
@@ -196,32 +196,46 @@ def get_connectivity_table(molecule, inverse_map):
 
 def get_atom_map(molecule, mapped_smiles):
     """
-    Map tag in mapped SMILES to atom idx
+    Map tag in mapped SMILES to atom idx using a substructure search
+    A substructure search finds chemically equivalent matches so if atoms are symmetrical, they can flip. The mapped
+    SMILES used for the pattern is first used to generate a molecule with the map indices, the order is canonicalized
+    and then it is used for the substructure search pattern. This ensures that symmetrical do not flip but there is no
+    guarantee that it won't happen.
 
     Parameters
     ----------
-    molecule
-    mapped_smiles
+    molecule: oechem.OEMOl
+        Must have explicit hydrogen
+    mapped_smiles: str
+        explicit hydrogen SMILES with map indices on every atom
 
     Returns
     -------
+    atom_map: dict
+        {map_idx:atom_idx}
 
     """
-    # check that smiles has map indices
+    # check that smiles has explicit hydrogen and map indices
     mapped_mol = oechem.OEMol()
     oechem.OESmilesToMol(mapped_mol, mapped_smiles)
+    if not has_explicit_hydrogen(mapped_mol):
+        raise ValueError("Mapped SMILES must have explicit hydrogens")
     if not has_atom_map(mapped_mol):
         raise ValueError("Mapped SMILES must have map indices for all atoms and hydrogens")
-    ss = oechem.OESubSearch(mapped_smiles)
+    # Check molecule for explicit hydrogen
+    if not has_explicit_hydrogen(molecule):
+        raise ValueError("Molecule must have explicit hydrogens")
+
+    # canonical order mapped mol to ensure atom map is always generated in the same order
+    canonical_order_atoms(mapped_mol)
+    aopts = oechem.OEExprOpts_DefaultAtoms
+    bopts = oechem.OEExprOpts_DefaultBonds
+    ss = oechem.OESubSearch(mapped_mol, aopts, bopts)
     oechem.OEPrepareSearch(molecule, ss)
     ss.SetMaxMatches(1)
 
     atom_map = {}
-    t1 = time.time()
     matches = [m for m in ss.Match(molecule)]
-    t2 = time.time()
-    seconds = t2-t1
-    print("CSS took {} seconds".format(seconds))
     if not matches:
         raise RuntimeError("MCSS failed for {}, smiles: {}".format(oechem.OEMolToSmiles(molecule), mapped_smiles))
     for match in matches:
@@ -237,6 +251,7 @@ def get_atom_map(molecule, mapped_smiles):
 
 def get_map_ordered_geometry(molecule, atom_map):
     """
+    Generate geometry list of size 3*N in the order of the atom map
 
     Parameters
     ----------
@@ -364,10 +379,11 @@ def has_atom_map(molecule):
     Checks if any atom has map indices. Will return True if even only one atom has a map index
     Parameters
     ----------
-    molecule
+    molecule: oechem.OEMOl
 
     Returns
     -------
+    bool
 
     """
     IS_MAPPED = False
@@ -383,10 +399,11 @@ def is_missing_atom_map(molecule):
     Checks if any atom in molecule is missing a map index. If even only one atom is missing a map index will return True
     Parameters
     ----------
-    molecule
+    molecule: oechem.OEMOl
 
     Returns
     -------
+    bool
 
     """
     MISSING_ATOM_MAP = False
@@ -423,6 +440,7 @@ def restore_atom_map(molecule):
         Must have 'MapIdx' in atom data dictionary
     """
     for atom in molecule.GetAtoms():
+
         if atom.HasData('MapIdx'):
             atom.SetMapIdx(atom.GetData('MapIdx'))
 

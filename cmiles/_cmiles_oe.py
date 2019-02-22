@@ -49,7 +49,8 @@ def mol_from_json(symbols, connectivity, geometry, permute_xyz=False):
     oechem.OEDetermineConnectivity(molecule)
     oechem.OEFindRingAtomsAndBonds(molecule)
     oechem.OEPerceiveBondOrders(molecule)
-    oechem.OEAssignImplicitHydrogens(molecule)
+    # This seems to add hydrogens that are not in the json
+    #oechem.OEAssignImplicitHydrogens(molecule)
     oechem.OEAssignFormalCharges(molecule)
     oechem.OEAssignAromaticFlags(molecule)
     oechem.OEPerceiveChiral(molecule)
@@ -130,8 +131,7 @@ def mol_to_smiles(molecule, isomeric=True, explicit_hydrogen=True, mapped=True):
     molecule = oechem.OEMol(molecule)
 
     if has_atom_map(molecule):
-        #ToDo remove?
-        raise ValueError("Why oh why does the molecule still have map indices if it was already removed???")
+        remove_atom_map(molecule)
 
     if explicit_hydrogen:
         if not has_explicit_hydrogen(molecule):
@@ -195,7 +195,7 @@ def get_connectivity_table(molecule, inverse_map):
     return connectivity_table
 
 
-def get_atom_map(molecule, mapped_smiles):
+def get_atom_map(molecule, mapped_smiles, strict=True):
     """
     Map tag in mapped SMILES to atom idx using a substructure search
     A substructure search finds chemically equivalent matches so if atoms are symmetrical, they can flip. The mapped
@@ -219,12 +219,10 @@ def get_atom_map(molecule, mapped_smiles):
     # check that smiles has explicit hydrogen and map indices
     mapped_mol = oechem.OEMol()
     oechem.OESmilesToMol(mapped_mol, mapped_smiles)
-    if not has_explicit_hydrogen(mapped_mol):
-        raise ValueError("Mapped SMILES must have explicit hydrogens")
     if not has_atom_map(mapped_mol):
         raise ValueError("Mapped SMILES must have map indices for all atoms and hydrogens")
     # Check molecule for explicit hydrogen
-    if not has_explicit_hydrogen(molecule):
+    if not has_explicit_hydrogen(molecule) and strict:
         raise ValueError("Molecule must have explicit hydrogens")
 
     # canonical order mapped mol to ensure atom map is always generated in the same order
@@ -246,14 +244,10 @@ def get_atom_map(molecule, mapped_smiles):
     # sanity check
     mol = oechem.OEGraphMol()
     oechem.OESubsetMol(mol, match, True)
-    remove_atom_map(mol)
-    matched_smiles = oechem.OEMolToSmiles(mol)
+    matched_smiles = mol_to_smiles(mol, isomeric=False, explicit_hydrogen=False, mapped=False)
     molcopy = oechem.OEMol(molecule)
-    if has_atom_map(molcopy):
-        remove_atom_map(molcopy)
-    smiles = oechem.OEMolToSmiles(molcopy)
-    remove_atom_map(mapped_mol)
-    pattern_smiles = oechem.OEMolToSmiles(mapped_mol)
+    smiles = mol_to_smiles(molcopy, isomeric=False, explicit_hydrogen=False, mapped=False)
+    pattern_smiles = mol_to_smiles(mapped_mol, isomeric=False, explicit_hydrogen=False, mapped=False)
     if not matched_smiles == smiles == pattern_smiles:
         raise RuntimeError("Matched molecule, input molecule and mapped SMILES are not the same ")
     return atom_map

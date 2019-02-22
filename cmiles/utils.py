@@ -228,8 +228,7 @@ def mol_to_map_ordered_qcschema(molecule, molecule_ids, multiplicity=1, **kwargs
     return qcschema_mol
 
 
-
-def get_atom_map(molecule, mapped_smiles):
+def get_atom_map(molecule, mapped_smiles, **kwargs):
     """
     Get mapping of map index -> atom index
 
@@ -485,3 +484,20 @@ def _set_toolkit(molecule):
     else:
         raise RuntimeError("Must have openeye or rdkit installed")
     return toolkit
+
+
+def invert_atom_map(atom_map):
+    """
+    Invert atom map {map_idx:atom_idx} --> {atom_idx:map_idx}
+    Parameters
+    ----------
+    atom_map: dict
+        {map_idx:atom_idx}
+
+    Returns
+    -------
+    inverse_map: dict
+        {atom_idx:map_idx}
+
+    """
+    return dict(zip(atom_map.values(), atom_map.keys()))

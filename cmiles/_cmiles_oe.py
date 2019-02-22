@@ -3,7 +3,6 @@
 """
 import openeye as toolkit
 from openeye import oechem
-import time
 import copy
 import warnings
 from .utils import ANGSROM_2_BOHR, _symbols
@@ -50,7 +49,8 @@ def mol_from_json(symbols, connectivity, geometry, permute_xyz=False):
     oechem.OEDetermineConnectivity(molecule)
     oechem.OEFindRingAtomsAndBonds(molecule)
     oechem.OEPerceiveBondOrders(molecule)
-    oechem.OEAssignImplicitHydrogens(molecule)
+    # This seems to add hydrogens that are not in the json
+    #oechem.OEAssignImplicitHydrogens(molecule)
     oechem.OEAssignFormalCharges(molecule)
     oechem.OEAssignAromaticFlags(molecule)
     oechem.OEPerceiveChiral(molecule)
@@ -130,6 +130,9 @@ def mol_to_smiles(molecule, isomeric=True, explicit_hydrogen=True, mapped=True):
 
     molecule = oechem.OEMol(molecule)
 
+    if has_atom_map(molecule):
+        remove_atom_map(molecule)
+
     if explicit_hydrogen:
         if not has_explicit_hydrogen(molecule):
             oechem.OEAddExplicitHydrogens(molecule)
@@ -174,14 +177,16 @@ def mol_to_smiles(molecule, isomeric=True, explicit_hydrogen=True, mapped=True):
 
 def get_connectivity_table(molecule, inverse_map):
     """
-
+    Generate connectivity table for molecule using map indices from atom map
     Parameters
     ----------
-    molecule
-    inverse_map
+    molecule: oechem.OEMol
+    inverse_map: dict {atom_idx:atom_map}
 
     Returns
     -------
+    connectivity_table: list of lists
+        [[atom1, atom2, bond_order]...]
 
     """
     connectivity_table = [[inverse_map[bond.GetBgnIdx()]-1, inverse_map[bond.GetEndIdx()]-1, bond.GetOrder()] for bond
@@ -190,34 +195,46 @@ def get_connectivity_table(molecule, inverse_map):
     return connectivity_table
 
 
-def get_atom_map(molecule, mapped_smiles):
+def get_atom_map(molecule, mapped_smiles, strict=True):
     """
-    Map tag in mapped SMILES to atom idx
+    Map tag in mapped SMILES to atom idx using a substructure search
+    A substructure search finds chemically equivalent matches so if atoms are symmetrical, they can flip. The mapped
+    SMILES used for the pattern is first used to generate a molecule with the map indices, the order is canonicalized
+    and then it is used for the substructure search pattern. This ensures that symmetrical do not flip but there is no
+    guarantee that it won't happen.
 
     Parameters
     ----------
-    molecule
-    mapped_smiles
+    molecule: oechem.OEMOl
+        Must have explicit hydrogen
+    mapped_smiles: str
+        explicit hydrogen SMILES with map indices on every atom
 
     Returns
     -------
+    atom_map: dict
+        {map_idx:atom_idx}
 
     """
-    # check that smiles has map indices
+    # check that smiles has explicit hydrogen and map indices
     mapped_mol = oechem.OEMol()
     oechem.OESmilesToMol(mapped_mol, mapped_smiles)
     if not has_atom_map(mapped_mol):
         raise ValueError("Mapped SMILES must have map indices for all atoms and hydrogens")
-    ss = oechem.OESubSearch(mapped_smiles)
+    # Check molecule for explicit hydrogen
+    if not has_explicit_hydrogen(molecule) and strict:
+        raise ValueError("Molecule must have explicit hydrogens")
+
+    # canonical order mapped mol to ensure atom map is always generated in the same order
+    canonical_order_atoms(mapped_mol)
+    aopts = oechem.OEExprOpts_DefaultAtoms
+    bopts = oechem.OEExprOpts_DefaultBonds
+    ss = oechem.OESubSearch(mapped_mol, aopts, bopts)
     oechem.OEPrepareSearch(molecule, ss)
     ss.SetMaxMatches(1)
 
     atom_map = {}
-    t1 = time.time()
     matches = [m for m in ss.Match(molecule)]
-    t2 = time.time()
-    seconds = t2-t1
-    print("CSS took {} seconds".format(seconds))
     if not matches:
         raise RuntimeError("MCSS failed for {}, smiles: {}".format(oechem.OEMolToSmiles(molecule), mapped_smiles))
     for match in matches:
@@ -227,12 +244,18 @@ def get_atom_map(molecule, mapped_smiles):
     # sanity check
     mol = oechem.OEGraphMol()
     oechem.OESubsetMol(mol, match, True)
-    print("Match SMILES: {}".format(oechem.OEMolToSmiles(mol)))
+    matched_smiles = mol_to_smiles(mol, isomeric=False, explicit_hydrogen=False, mapped=False)
+    molcopy = oechem.OEMol(molecule)
+    smiles = mol_to_smiles(molcopy, isomeric=False, explicit_hydrogen=False, mapped=False)
+    pattern_smiles = mol_to_smiles(mapped_mol, isomeric=False, explicit_hydrogen=False, mapped=False)
+    if not matched_smiles == smiles == pattern_smiles:
+        raise RuntimeError("Matched molecule, input molecule and mapped SMILES are not the same ")
     return atom_map
 
 
 def get_map_ordered_geometry(molecule, atom_map):
     """
+    Generate geometry list of size 3*N in the order of the atom map
 
     Parameters
     ----------
@@ -356,13 +379,95 @@ def has_stereo_defined(molecule):
 
 
 def has_atom_map(molecule):
-    IS_MAPPED = True
+    """
+    Checks if any atom has map indices. Will return True if even only one atom has a map index
+    Parameters
+    ----------
+    molecule: oechem.OEMOl
+
+    Returns
+    -------
+    bool
+
+    """
+    IS_MAPPED = False
     for atom in molecule.GetAtoms():
-            if atom.GetMapIdx() == 0:
-                IS_MAPPED = False
+            if atom.GetMapIdx() != 0:
+                IS_MAPPED = True
+                return IS_MAPPED
     return IS_MAPPED
 
 
-def remove_atom_map(molecule):
-    for a in molecule.GetAtoms():
-        a.SetMapIdx(0)
+def is_missing_atom_map(molecule):
+    """
+    Checks if any atom in molecule is missing a map index. If even only one atom is missing a map index will return True
+    Parameters
+    ----------
+    molecule: oechem.OEMOl
+
+    Returns
+    -------
+    bool
+
+    """
+    MISSING_ATOM_MAP = False
+    for atom in molecule.GetAtoms():
+            if atom.GetMapIdx() == 0:
+                MISSING_ATOM_MAP = True
+                return MISSING_ATOM_MAP
+    return MISSING_ATOM_MAP
+
+
+def remove_atom_map(molecule, keep_map_data=True):
+    """
+    Remove atom map but store it in atom data. In place.
+    Parameters
+    ----------
+    molecule: OEMol with map indices
+    keep_map_data: bool, optional, default True
+        If True, will store map indices in 'MapIdx' field in atom data
+
+    """
+    for atom in molecule.GetAtoms():
+        if atom.GetMapIdx() != 0:
+            if keep_map_data:
+                atom.SetData('MapIdx', atom.GetMapIdx())
+            atom.SetMapIdx(0)
+
+
+def restore_atom_map(molecule):
+    """
+    Restore atom map from atom data. In place.
+    Parameters
+    ----------
+    molecule: OEMol
+        Must have 'MapIdx' in atom data dictionary
+    """
+    for atom in molecule.GetAtoms():
+
+        if atom.HasData('MapIdx'):
+            atom.SetMapIdx(atom.GetData('MapIdx'))
+
+
+def is_map_canonical(molecule):
+    """
+    Check if map indices on molecule is in canonical order.
+    Reorder atoms to be in canonical order and compare the atom order to the map indices.
+
+    Parameters
+    ----------
+    molecule: OEMol created from the mapped SMILES
+
+    Returns
+    -------
+    True if canonical ordered atoms match map indices. False otherwise.
+
+    """
+    molcopy = oechem.OEMol(molecule)
+    # reorder molcopy
+    canonical_order_atoms(molcopy, in_place=True)
+    # Now check that map indices are +1 on atom indices
+    for a in molcopy.GetAtoms():
+        if a.GetMapIdx() != a.GetIdx() + 1:
+            return False
+    return True

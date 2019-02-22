@@ -5,6 +5,7 @@ import rdkit as toolkit
 from rdkit import Chem
 from .utils import _symbols, ANGSROM_2_BOHR
 import warnings
+import copy
 
 
 def mol_from_json(symbols, connectivity, geometry, permute_xyz=False):
@@ -129,6 +130,11 @@ def mol_to_smiles(molecule, isomeric=True, explicit_hydrogen=True, mapped=True):
         The canonical SMILES
 
     """
+    if mapped and not explicit_hydrogen:
+        raise Warning("Tagged SMILES must include hydrogens to retain order")
+
+    if mapped and not isomeric:
+        raise Warning("Tagged SMILES must include stereochemistry ")
 
     if explicit_hydrogen:
         # Add explicit hydrogens
@@ -176,6 +182,7 @@ def get_connectivity_table(molecule, inverse_map):
     return connectivity_table
 
 
+
 def get_atom_map(molecule, mapped_smiles):
     """
 
@@ -198,12 +205,17 @@ def get_atom_map(molecule, mapped_smiles):
     mapped_pattern = Chem.MolFromSmarts(mapped_smiles)
     if molecule.HasSubstructMatch(mapped_pattern):
         idx_pattern_order = molecule.GetSubstructMatch(mapped_pattern)
+
+
+    mapped_pattern = Chem.MolFromSmarts(mapped_smiles)
+    if molecule.HasSubstructMatch(mapped_pattern):
+        idx_pattern_order = molecule.GetSubstructMatch(mapped_pattern)
     else:
         raise RuntimeError("Substrucure match failed for {}, SMARTS: {}".format(Chem.MolToSmiles(molecule), mapped_smiles))
-
     atom_map = {}
     for i, j in enumerate(idx_pattern_order):
         atom_map[mapped_pattern.GetAtomWithIdx(i).GetAtomMapNum()] = j
+
     return atom_map
 
 
@@ -304,13 +316,96 @@ def has_stereo_defined(molecule):
 
 
 def has_atom_map(molecule):
-    IS_MAPPED = True
+    """
+    Checks if any atom has map indices. Will return True if even only one atom has a map index
+    Parameters
+    ----------
+    molecule
+
+    Returns
+    -------
+
+    """
+    IS_MAPPED = False
     for atom in molecule.GetAtoms():
-        if atom.GetAtomMapNum() == 0:
-            IS_MAPPED = False
+            if atom.GetAtomMapNum() != 0:
+                IS_MAPPED = True
+                return IS_MAPPED
     return IS_MAPPED
 
 
-def remove_atom_map(molecule):
-    for a in molecule.GetAtoms():
-        a.SetAtomMapNum(0)
+def is_missing_atom_map(molecule):
+    """
+    Checks if any atom in molecule is missing a map index. If even only one atom is missing a map index will return True
+
+    Parameters
+    ----------
+    molecule
+
+    Returns
+    -------
+
+    """
+    MISSING_ATOM_MAP = False
+    for atom in molecule.GetAtoms():
+            if atom.GetAtomMapNum() == 0:
+                MISSING_ATOM_MAP = True
+                return MISSING_ATOM_MAP
+    return MISSING_ATOM_MAP
+
+
+def remove_atom_map(molecule, keep_map_data=True):
+    """
+    Remove atom map but store it in atom data.
+    Parameters
+    ----------
+    molecule
+
+    Returns
+    -------
+
+    """
+    for atom in molecule.GetAtoms():
+        if atom.GetAtomMapNum() != 0:
+            if keep_map_data:
+                atom.SetProp('_map_idx', str(atom.GetAtomMapNum()))
+            atom.SetAtomMapNum(0)
+
+
+def restore_atom_map(molecule):
+    """
+    Restore atom map from atom data
+    Parameters
+    ----------
+    molecule: OEMol
+        Must have 'MapIdx' in atom data dictionary
+    """
+    for atom in molecule.GetAtoms():
+        if atom.HasProp('_map_idx'):
+            atom.SetAtomMapNum(int(atom.GetProp('_map_idx')))
+
+
+def is_map_canonical(molecule):
+    """
+    Check if map indices on molecule is in canonical order.
+    Note:
+    This only checks map indices on heavy atoms.
+
+    Parameters
+    ----------
+    molecule
+
+    Returns
+    -------
+
+    """
+    molcopy = copy.deepcopy(molecule)
+    # reorder molcopy
+    canonical_ordered_mol = canonical_order_atoms(molcopy)
+    # remove h. This is needed because explicit H are not added even when molecule is created from SMILES with explicit H
+    canonical_ordered_mol = Chem.RemoveHs(canonical_ordered_mol)
+
+    # check that both mapped SMILES are equal
+    smiles_1 = Chem.MolToSmiles(molecule, canonical=True)
+    smiles_2 = Chem.MolToSmiles(canonical_ordered_mol, canonical=True)
+    return smiles_1 == smiles_2

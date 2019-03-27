@@ -202,10 +202,6 @@ def get_atom_map(molecule, mapped_smiles):
     # Check if molecule has explicit H
     if not has_explicit_hydrogen(molecule):
         molecule = Chem.AddHs(molecule)
-    mapped_pattern = Chem.MolFromSmarts(mapped_smiles)
-    if molecule.HasSubstructMatch(mapped_pattern):
-        idx_pattern_order = molecule.GetSubstructMatch(mapped_pattern)
-
 
     mapped_pattern = Chem.MolFromSmarts(mapped_smiles)
     if molecule.HasSubstructMatch(mapped_pattern):

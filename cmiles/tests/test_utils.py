@@ -237,7 +237,7 @@ def test_atom_map(smiles):
     """Test that atom map orders geometry the same way every time no matter the SMILES used to create the molecule"""
     import cmiles
     mapped_smiles = '[H:5][C:1]([H:6])([C:2]([H:7])([H:8])[O:4][H:10])[O:3][H:9]'
-    mol_id_oe = cmiles.to_molecule_id(mapped_smiles, canonicalization='openeye')
+    mol_id_oe = cmiles.get_molecule_ids(mapped_smiles, toolkit='openeye')
     oemol = utils.load_molecule(mapped_smiles, toolkit='openeye')
     mapped_symbols = ['C', 'C', 'O', 'O', 'H', 'H', 'H', 'H', 'H', 'H']
     mapped_geometry = [-1.6887193912042044, 0.8515190939276903, 0.8344587822904272, -4.05544806361675, -0.3658269566455062,

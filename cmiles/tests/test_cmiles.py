@@ -214,7 +214,7 @@ def test_oe_cmiles():
                            '[H:35][c:1]1[c:2]([c:12]([c:13]([c:5]([c:9]1[N:27]([H:58])[c:14]2[c:7]3[c:3]([c:10]([c:11]([c:4]([c:8]3[n:25][c:6]([n:26]2)[H:40])[H:38])[O:32][C@@:21]4([C:18]([C:19]([O:31][C:20]4([H:47])[H:48])([H:45])[H:46])([H:43])[H:44])[H:49])[N:28]([H:59])[C:17](=[O:30])/[C:15](=[C:16](\\[H:42])/[C:24]([H:56])([H:57])[N:29]([C:22]([H:50])([H:51])[H:52])[C:23]([H:53])([H:54])[H:55])/[H:41])[H:37])[H:39])[Cl:34])[F:33])[H:36]',
                        'provenance': 'cmiles_0.0.0+1.geb7d850.dirty_openeye_2018.Feb.b6'}
     smiles = 'CN(C)C/C=C/C(=O)Nc1cc2c(cc1O[C@@H]3CCOC3)ncnc2Nc4ccc(c(c4)Cl)F'
-    output = cmiles.to_molecule_id(smiles, canonicalization='openeye', strict=False)
+    output = cmiles.get_molecule_ids(smiles, toolkit='openeye', strict=False)
     assert expected_output['canonical_smiles'] == output['canonical_smiles']
     assert expected_output['canonical_isomeric_smiles'] == output['canonical_isomeric_smiles']
     assert expected_output['canonical_isomeric_explicit_hydrogen_smiles'] == output['canonical_isomeric_explicit_hydrogen_smiles']
@@ -232,7 +232,7 @@ def test_rd_cmiles():
  'canonical_isomeric_explicit_hydrogen_mapped_smiles': '[O:1]=[C:8](/[C:9](=[C:10](/[C:30]([N:27]([C:28]([H:45])([H:46])[H:47])[C:29]([H:48])([H:49])[H:50])([H:51])[H:52])[H:36])[H:35])[N:25]([c:18]1[c:17]([O:7][C@:34]2([H:59])[C:32]([H:55])([H:56])[O:6][C:31]([H:53])([H:54])[C:33]2([H:57])[H:58])[c:20]([H:41])[c:23]2[n:5][c:11]([H:37])[n:4][c:21]([N:26]([c:19]3[c:13]([H:39])[c:12]([H:38])[c:15]([F:2])[c:16]([Cl:3])[c:14]3[H:40])[H:44])[c:24]2[c:22]1[H:42])[H:43]',
  'provenance': 'cmiles_0.0.0+7.gc71f3a6.dirty_rdkit_2018.03.3'}
     smiles = 'CN(C)C/C=C/C(=O)Nc1cc2c(Nc3ccc(F)c(Cl)c3)ncnc2cc1O[C@H]1CCOC1'
-    output = cmiles.to_molecule_id(smiles, canonicalization='rdkit', strict=False)
+    output = cmiles.get_molecule_ids(smiles, toolkit='rdkit', strict=False)
     assert expected_output['canonical_smiles'] == output['canonical_smiles']
     assert expected_output['canonical_isomeric_smiles'] == output['canonical_isomeric_smiles']
     assert expected_output['canonical_isomeric_explicit_hydrogen_smiles'] == output['canonical_isomeric_explicit_hydrogen_smiles']
@@ -245,14 +245,14 @@ def test_rd_cmiles():
 def test_diff_smiles():
     """Test different SMILES of same molecule"""
     input_smiles = ['C[C@H](c1c(ccc(c1Cl)F)Cl)OC', 'CO[C@H](C)c1c(Cl)ccc(F)c1Cl']
-    cmiles_1 = cmiles.to_molecule_id(input_smiles[0], strict=False)
-    cmiles_2 = cmiles.to_molecule_id(input_smiles[1], strict=False)
+    cmiles_1 = cmiles.get_molecule_ids(input_smiles[0], strict=False)
+    cmiles_2 = cmiles.get_molecule_ids(input_smiles[1], strict=False)
     assert cmiles_1['canonical_smiles'] == cmiles_2['canonical_smiles']
     assert cmiles_1['canonical_isomeric_smiles'] == cmiles_2['canonical_isomeric_smiles']
     assert cmiles_1['canonical_isomeric_explicit_hydrogen_mapped_smiles'] == cmiles_2['canonical_isomeric_explicit_hydrogen_mapped_smiles']
 
-    cmiles_1 = cmiles.to_molecule_id(input_smiles[0], canonicalization='rdkit', strict=False)
-    cmiles_2 = cmiles.to_molecule_id(input_smiles[1], canonicalization='rdkit', strict=False)
+    cmiles_1 = cmiles.get_molecule_ids(input_smiles[0], toolkit='rdkit', strict=False)
+    cmiles_2 = cmiles.get_molecule_ids(input_smiles[1], toolkit='rdkit', strict=False)
     assert cmiles_1['canonical_smiles'] == cmiles_2['canonical_smiles']
     assert cmiles_1['canonical_isomeric_smiles'] == cmiles_2['canonical_isomeric_smiles']
     assert cmiles_1['canonical_isomeric_explicit_hydrogen_mapped_smiles'] == cmiles_2['canonical_isomeric_explicit_hydrogen_mapped_smiles']
@@ -263,13 +263,13 @@ def test_initial_iso():
     """test given chirality"""
 
     input_smiles = ["CC[C@@H](C)N",  "CC[C@H](C)N"]
-    cmiles_1 = cmiles.to_molecule_id(input_smiles[0], strict=False)
-    cmiles_2 = cmiles.to_molecule_id(input_smiles[-1], strict=False)
+    cmiles_1 = cmiles.get_molecule_ids(input_smiles[0], strict=False)
+    cmiles_2 = cmiles.get_molecule_ids(input_smiles[-1], strict=False)
     assert cmiles_1['canonical_smiles'] == cmiles_2['canonical_smiles']
     assert cmiles_1['canonical_isomeric_smiles'] != cmiles_2['canonical_isomeric_smiles']
 
-    cmiles_1 = cmiles.to_molecule_id(input_smiles[0], canonicalization='rdkit', strict=False)
-    cmiles_2 = cmiles.to_molecule_id(input_smiles[-1], canonicalization='rdkit', strict=False)
+    cmiles_1 = cmiles.get_molecule_ids(input_smiles[0], toolkit='rdkit', strict=False)
+    cmiles_2 = cmiles.get_molecule_ids(input_smiles[-1], toolkit='rdkit', strict=False)
     assert cmiles_1['canonical_smiles'] == cmiles_2['canonical_smiles']
     assert cmiles_1['canonical_isomeric_smiles'] != cmiles_2['canonical_isomeric_smiles']
 
@@ -318,7 +318,7 @@ def test_inchi(input, output):
     """Check that inchis are the same"""
 
     rd_mol = Chem.MolFromSmiles(input)
-    rd_inchi = cmiles.generator.to_inchi_and_key(rd_mol)[0]
+    rd_inchi = cmiles.generator.get_inchi_and_key(rd_mol)[0]
 
     assert rd_inchi == output
 
@@ -329,7 +329,7 @@ def test_inchi_key(input, output):
     """Check that inchi key is the same"""
 
     rd_mol = Chem.MolFromSmiles(input)
-    rd_inchi_key = cmiles.generator.to_inchi_and_key(rd_mol)[1]
+    rd_inchi_key = cmiles.generator.get_inchi_and_key(rd_mol)[1]
 
     assert rd_inchi_key == output
 
@@ -337,14 +337,14 @@ def test_inchi_key(input, output):
 @using_rdkit
 def test_input_mapped():
     smiles = '[H:3][C:1]([H:4])([H:5])[C:2]([H:6])([H:7])[H:8]'
-    mol_id = cmiles.to_molecule_id(smiles)
+    mol_id = cmiles.get_molecule_ids(smiles)
 
     mol_1 = cmiles.utils.load_molecule(mol_id['canonical_isomeric_smiles'])
     mol_2 = cmiles.utils.load_molecule(mol_id['canonical_isomeric_explicit_hydrogen_mapped_smiles'])
     assert cmiles.utils.has_atom_map(mol_1) == False
     assert cmiles.utils.has_atom_map(mol_2) == True
 
-    mol_id = cmiles.to_molecule_id(smiles, canonicalization='rdkit', strict=False)
+    mol_id = cmiles.get_molecule_ids(smiles, toolkit='rdkit', strict=False)
 
     mol_1 = cmiles.utils.load_molecule(mol_id['canonical_isomeric_smiles'], backend='rdkit')
     mol_2 = cmiles.utils.load_molecule(mol_id['canonical_isomeric_explicit_hydrogen_mapped_smiles'], backend='rdkit')
@@ -418,7 +418,7 @@ def test_keep_chiral_stereo():
                   [3, 10, 1]]
                 }
 
-    mol_id = cmiles.to_molecule_id(json_mol)
+    mol_id = cmiles.get_molecule_ids(json_mol)
 
     assert mol_id['canonical_smiles'] == 'CC(N)(O)F'
     assert mol_id['canonical_isomeric_smiles'] == 'C[C@@](N)(O)F'
@@ -427,7 +427,7 @@ def test_keep_chiral_stereo():
 
     # generate rd canonicalized smiles - the order should still be as before even though that is not the rdkit canonical
     # order. We want to retain the order for json molecules to their geometry
-    mol_id = cmiles.to_molecule_id(json_mol, canonicalization='rdkit')
+    mol_id = cmiles.get_molecule_ids(json_mol, toolkit='rdkit')
     assert mol_id['canonical_smiles'] == 'CC(N)(O)F'
     assert mol_id['canonical_isomeric_smiles'] == 'C[C@@](N)(O)F'
     assert mol_id['canonical_isomeric_explicit_hydrogen_smiles'] == '[H][O][C@]([F])([N]([H])[H])[C]([H])([H])[H]'
@@ -459,7 +459,7 @@ def test_keep_chiral_stereo():
                 [2, 9, 1],
                 [3, 10, 1]],
                 }
-    mol_id = cmiles.to_molecule_id(json_mol)
+    mol_id = cmiles.get_molecule_ids(json_mol)
 
     assert mol_id['canonical_smiles'] == 'CC(N)(O)F'
     assert mol_id['canonical_isomeric_smiles'] == 'C[C@](N)(O)F'
@@ -468,7 +468,7 @@ def test_keep_chiral_stereo():
 
     # generate rd canonicalized smiles - the order should still be as before even though that is not the rdkit canonical
     # order. We want to retain the order for json molecules to their geometry
-    mol_id = cmiles.to_molecule_id(json_mol, canonicalization='rdkit')
+    mol_id = cmiles.get_molecule_ids(json_mol, toolkit='rdkit')
     assert mol_id['canonical_smiles'] == 'CC(N)(O)F'
     assert mol_id['canonical_isomeric_smiles'] == 'C[C@](N)(O)F'
     assert mol_id['canonical_isomeric_explicit_hydrogen_smiles'] == '[H][O][C@@]([F])([N]([H])[H])[C]([H])([H])[H]'
@@ -524,10 +524,10 @@ def test_bond_stereo():
                             'molecular_multiplicity': 1,
                             'connectivity': [[4, 5, 2], [4, 2, 1], [5, 3, 1], [4, 0, 1], [5, 1, 1]],}
 
-    id_oe_to_oe = cmiles.to_molecule_id(json_mol_from_oe_map, canonicalization='openeye')
-    id_oe_to_rd = cmiles.to_molecule_id(json_mol_from_oe_map, canonicalization='rdkit')
-    id_rd_to_oe = cmiles.to_molecule_id(json_mol_from_rd_map, canonicalization='openeye')
-    id_rd_to_rd = cmiles.to_molecule_id(json_mol_from_rd_map, canonicalization='rdkit')
+    id_oe_to_oe = cmiles.get_molecule_ids(json_mol_from_oe_map, toolkit='openeye')
+    id_oe_to_rd = cmiles.get_molecule_ids(json_mol_from_oe_map, toolkit='rdkit')
+    id_rd_to_oe = cmiles.get_molecule_ids(json_mol_from_rd_map, toolkit='openeye')
+    id_rd_to_rd = cmiles.get_molecule_ids(json_mol_from_rd_map, toolkit='rdkit')
 
     assert id_oe_to_oe['canonical_smiles'] == id_rd_to_oe['canonical_smiles'] == 'C(=CCl)F'
     assert id_oe_to_oe['canonical_isomeric_smiles'] == id_rd_to_oe['canonical_isomeric_smiles'] == 'C(=C/Cl)\\F'
@@ -590,10 +590,10 @@ def test_bond_stereo():
                             'molecular_multiplicity': 1,
                             'connectivity': [[4, 5, 2], [4, 2, 1], [5, 3, 1], [4, 0, 1], [5, 1, 1]]}
 
-    id_oe_to_oe = cmiles.to_molecule_id(json_mol_from_oe_map, canonicalization='openeye')
-    id_oe_to_rd = cmiles.to_molecule_id(json_mol_from_oe_map, canonicalization='rdkit')
-    id_rd_to_oe = cmiles.to_molecule_id(json_mol_from_rd_map, canonicalization='openeye')
-    id_rd_to_rd = cmiles.to_molecule_id(json_mol_from_rd_map, canonicalization='rdkit')
+    id_oe_to_oe = cmiles.get_molecule_ids(json_mol_from_oe_map, toolkit='openeye')
+    id_oe_to_rd = cmiles.get_molecule_ids(json_mol_from_oe_map, toolkit='rdkit')
+    id_rd_to_oe = cmiles.get_molecule_ids(json_mol_from_rd_map, toolkit='openeye')
+    id_rd_to_rd = cmiles.get_molecule_ids(json_mol_from_rd_map, toolkit='rdkit')
 
     assert id_oe_to_oe['canonical_smiles'] == id_rd_to_oe['canonical_smiles'] == 'C(=CCl)F'
     assert id_oe_to_oe['canonical_isomeric_smiles'] == id_rd_to_oe['canonical_isomeric_smiles'] == 'C(=C\\Cl)\\F'
@@ -716,7 +716,7 @@ def test_permute_xyz(toolkit):
         'molecular_multiplicity': 1
     }
 
-    permuted_hooh = cmiles.to_molecule_id(hooh, toolkit, permute_xyz=True)
+    permuted_hooh = cmiles.get_molecule_ids(hooh, toolkit, permute_xyz=True)
 
     assert hooh['geometry'] != permuted_hooh['geometry']
 

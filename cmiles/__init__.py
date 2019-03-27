@@ -1,6 +1,6 @@
 """
-cmiles
-Generate canonical, isomeric, explicit hydrogen, mapped SMILES
+Generate canonical identifiers for chemical databases, specifically quantum
+chemical data.
 """
 
 # Make Python 2 and 3 imports work the same

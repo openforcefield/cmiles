@@ -25,6 +25,9 @@ setup(
     # Extend/modify the list to include/exclude other items as need be
     package_data={'cmiles': ["data/*.dat"]
                   },
+    extras_require={
+        'docs': ['numpydoc']
+    }
 
     # Additional entries you may want simply uncomment the lines you want and fill in the data
     author_email='chaya.stern@choderalab.org',      # Author email

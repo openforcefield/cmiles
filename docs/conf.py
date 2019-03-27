@@ -19,7 +19,7 @@
 
 # -- Project information -----------------------------------------------------
 
-project = 'Generate canonical, isomeric, explicit hydrogen, mapped SMILES'
+project = 'Generate canonical identifiers for quantum chemistry database'
 copyright = "2018, Chaya D. Stern"
 author = 'Chaya D. Stern'
 
@@ -41,7 +41,11 @@ release = ''
 extensions = [
     'sphinx.ext.autodoc',
     'sphinx.ext.mathjax',
-]
+    'sphinx.ext.viewcode',
+    'numpydoc',
+    'sphinx.ext.autosummary',
+    'sphinx.ext.doctest',
+    'sphinx.ext.inheritance_diagram']
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']

@@ -156,9 +156,18 @@ man_pages = [
 #  dir menu entry, description, category)
 texinfo_documents = [
     (master_doc, 'cmiles', 'cmiles Documentation',
-     author, 'cmiles', 'Generate canonical, isomeric, explicit hydrogen, mapped SMILES',
+     author, 'cmiles', 'Generate canonical molecular identifiers for quantum chemistry database',
      'Miscellaneous'),
 ]
 
 
 # -- Extension configuration -------------------------------------------------
+from mock import Mock as MagicMock
+
+class Mock(MagicMock):
+    @classmethod
+    def __getattr__(cls, name):
+        return MagicMock()
+
+MOCK_MODULES = ['numpy', 'rdkit', 'openeye']
+sys.modules.update((mod_name, Mock()) for mod_name in MOCK_MODULES)

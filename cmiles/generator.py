@@ -65,26 +65,26 @@ def get_molecule_ids(molecule_input, toolkit='openeye', strict=True, **kwargs):
         raise ValueError("Input SMILES must have full stereochemistry defined")
 
     molecule_ids = {}
-    toolkit = cmiles.utils._set_toolkit(molecule)
-    molecule_ids['canonical_smiles'] = toolkit.mol_to_smiles(molecule,
-                                                             isomeric=False,
-                                                             explicit_hydrogen=False,
-                                                             mapped=False)
-    molecule_ids['canonical_isomeric_smiles'] = toolkit.mol_to_smiles(molecule,
-                                                                      isomeric=True,
-                                                                      explicit_hydrogen=False,
-                                                                      mapped=False)
-    molecule_ids['canonical_explicit_hydrogen_smiles'] = toolkit.mol_to_smiles(molecule,
-                                                                               isomeric=False,
-                                                                               explicit_hydrogen=True,
-                                                                               mapped=False)
-    molecule_ids['canonical_isomeric_explicit_hydrogen_smiles'] = toolkit.mol_to_smiles(molecule,
-                                                                                        isomeric=True,
-                                                                                        explicit_hydrogen=True,
-                                                                                        mapped=False)
-    molecule_ids['canonical_isomeric_explicit_hydrogen_mapped_smiles'] = toolkit.mol_to_smiles(molecule, isomeric=True,
-                                                                                               explicit_hydrogen=True,
-                                                                                               mapped=True)
+    backend_toolkit = cmiles.utils._set_toolkit(molecule)
+    molecule_ids['canonical_smiles'] = backend_toolkit.mol_to_smiles(molecule,
+                                                                     isomeric=False,
+                                                                     explicit_hydrogen=False,
+                                                                     mapped=False)
+    molecule_ids['canonical_isomeric_smiles'] = backend_toolkit.mol_to_smiles(molecule,
+                                                                              isomeric=True,
+                                                                              explicit_hydrogen=False,
+                                                                              mapped=False)
+    molecule_ids['canonical_explicit_hydrogen_smiles'] = backend_toolkit.mol_to_smiles(molecule,
+                                                                                       isomeric=False,
+                                                                                       explicit_hydrogen=True,
+                                                                                       mapped=False)
+    molecule_ids['canonical_isomeric_explicit_hydrogen_smiles'] = backend_toolkit.mol_to_smiles(molecule,
+                                                                                                isomeric=True,
+                                                                                                explicit_hydrogen=True,
+                                                                                                mapped=False)
+    molecule_ids['canonical_isomeric_explicit_hydrogen_mapped_smiles'] = backend_toolkit.mol_to_smiles(molecule, isomeric=True,
+                                                                                                       explicit_hydrogen=True,
+                                                                                                       mapped=True)
 
     molecule_ids['molecular_formula'] = cmiles.utils.mol_to_hill_molecular_formula(molecule)
     inchi = get_inchi_and_key(molecule)
@@ -98,8 +98,8 @@ def get_molecule_ids(molecule_input, toolkit='openeye', strict=True, **kwargs):
     if cmiles.utils.has_openeye:
         molecule_ids['unique_protomer_representation'] = get_unique_protomer(molecule)
 
-    molecule_ids['provenance'] = 'cmiles_' + cmiles.__version__ + '_{}_'.format(toolkit) + \
-                                 toolkit.toolkit.__version__
+    molecule_ids['provenance'] = 'cmiles_' + cmiles.__version__ + '_{}_'.format(backend_toolkit) + \
+                                 backend_toolkit.toolkit.__version__
 
     try:
         if kwargs['permute_xyz']:

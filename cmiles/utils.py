@@ -510,7 +510,7 @@ def _set_toolkit(molecule):
         either cmiles._cmiles_oe or cmiles._cmiles_rd
     """
 
-    if has_openeye and isinstance(molecule, (oechem.OEMolBase)):
+    if has_openeye and isinstance(molecule, oechem.OEMolBase):
         import cmiles._cmiles_oe as toolkit
     elif has_rdkit and isinstance(molecule, Chem.rdchem.Mol):
         import cmiles._cmiles_rd as toolkit

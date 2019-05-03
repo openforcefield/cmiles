@@ -51,7 +51,9 @@ def mol_from_json(symbols, connectivity, geometry, permute_xyz=False):
         molecule.SetData(geom_tag, True)
     oechem.OEDetermineConnectivity(molecule)
     oechem.OEFindRingAtomsAndBonds(molecule)
-    oechem.OEPerceiveBondOrders(molecule)
+    # No need to perceive Bond Order because the information was added from the connectivity table. Apparently, this
+    # function does many different perceptions under the hood and it can add implicit hydrogens to divalent N that should be negatively charged.
+    #oechem.OEPerceiveBondOrders(molecule)
     # This seems to add hydrogens that are not in the json
     #oechem.OEAssignImplicitHydrogens(molecule)
     oechem.OEAssignFormalCharges(molecule)

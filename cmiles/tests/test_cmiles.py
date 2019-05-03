@@ -728,3 +728,8 @@ def test_permute_xyz(toolkit):
     for m in atom_map:
         for i in range(3):
             assert json_geom[atom_map[m]][i] == pytest.approx(permuted_geom[m-1][i], 0.0000001)
+
+@pytest.mark.parametrize('toolkit', toolkits_name)
+def test_provenance(toolkit):
+    provenance = cmiles.get_molecule_ids('[H]C([H])([H])C([H])([H])C([H])([H])C([H])([H])[H]', toolkit=toolkit)['provenance']
+    assert provenance.split('_')[2] == toolkit

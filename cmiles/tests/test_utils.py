@@ -30,7 +30,7 @@ def test_load_molecule(toolkit):
         assert oechem.OEMolToSmiles(mol) == 'CCCC'
     if toolkit == 'rdkit':
         from rdkit import Chem
-        assert Chem.MolToSmiles(mol) == 'CCCC'
+        assert Chem.MolToSmiles(mol) == '[H]C([H])([H])C([H])([H])C([H])([H])C([H])([H])[H]'
 
 
 @pytest.mark.parametrize('toolkit', toolkits_name)
@@ -162,30 +162,12 @@ def test_canonical_order_rd():
 @pytest.mark.parametrize('input, output', [('COC(C)c1c(Cl)ccc(F)c1Cl', False),
                                            ('C[C@@H](c1c(ccc(c1Cl)F)Cl)OC', False),
                                            ('O=O', True),
-                                           ('[CH3:1][CH2:3][CH2:4][CH3:2]', False)])
+                                           ('[CH3:1][CH2:3][CH2:4][CH3:2]', False),
+                                           ('[H]c1c(c(c(c(c1F)Cl)[C@]([H])(C([H])([H])[H])OC([H])([H])[H])Cl)[H]', True),
+                                           ('[C:1]([O:2][H:6])([H:3])([H:4])[H:5]', True)])
 def test_explicit_h(input, output, toolkit_name):
     """Test input SMILES for explicit H"""
     mol = utils.load_molecule(input, toolkit=toolkit_name)
-    assert utils.has_explicit_hydrogen(mol) == output
-
-
-@using_rdkit
-@pytest.mark.parametrize('input, output', [('[H]c1c(c(c(c(c1F)Cl)[C@]([H])(C([H])([H])[H])OC([H])([H])[H])Cl)[H]', False),
-                                           ('[C:1]([O:2][H:6])([H:3])([H:4])[H:5]', False)])
-def test_explicit_h_rd(input, output):
-    """Test input SMILES for explicit H"""
-
-    mol = utils.load_molecule(input, toolkit='rdkit')
-    assert utils.has_explicit_hydrogen(mol) == output
-
-
-@using_openeye
-@pytest.mark.parametrize('input, output', [('[H]c1c(c(c(c(c1F)Cl)[C@]([H])(C([H])([H])[H])OC([H])([H])[H])Cl)[H]', True),
-                                           ('[C:1]([O:2][H:6])([H:3])([H:4])[H:5]', True)])
-def test_explicit_h_oe(input, output):
-    """Test input SMILES for explicit H"""
-
-    mol = utils.load_molecule(input, toolkit='openeye')
     assert utils.has_explicit_hydrogen(mol) == output
 
 

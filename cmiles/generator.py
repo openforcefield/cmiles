@@ -98,7 +98,7 @@ def get_molecule_ids(molecule_input, toolkit='openeye', strict=True, **kwargs):
     if cmiles.utils.has_openeye:
         molecule_ids['unique_protomer_representation'] = get_unique_protomer(molecule)
 
-    molecule_ids['provenance'] = 'cmiles_' + cmiles.__version__ + '_{}_'.format(backend_toolkit) + \
+    molecule_ids['provenance'] = 'cmiles_' + cmiles.__version__ + '_{}_'.format(toolkit) + \
                                  backend_toolkit.toolkit.__version__
 
     try:

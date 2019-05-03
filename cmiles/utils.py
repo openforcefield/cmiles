@@ -72,7 +72,9 @@ def load_molecule(inp_molecule, toolkit='openeye', **kwargs):
             if not oechem.OESmilesToMol(molecule, inp_molecule):
                 raise ValueError("The supplied SMILES {} could not be parsed".format(inp_molecule))
         elif toolkit == 'rdkit' and has_rdkit:
-            molecule = Chem.MolFromSmiles(inp_molecule)
+            a = Chem.rdmolfiles.SmilesParserParams()
+            a.removeHs = False
+            molecule = Chem.MolFromSmiles(inp_molecule, a)
             if not molecule:
                 raise ValueError("The supplied SMILES {} could not be parsed".format(inp_molecule))
         else:

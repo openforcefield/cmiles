@@ -381,7 +381,7 @@ def is_map_canonical(molecule):
     return toolkit.is_map_canonical(molecule)
 
 
-def remove_atom_map(molecule, keep_map_data=True):
+def remove_atom_map(molecule, **kwargs):
     """
     Remove atom map from molecule
 
@@ -394,7 +394,7 @@ def remove_atom_map(molecule, keep_map_data=True):
 
     """
     toolkit = _set_toolkit(molecule)
-    toolkit.remove_atom_map(molecule)
+    toolkit.remove_atom_map(molecule, **kwargs)
 
 
 def restore_atom_map(molecule):

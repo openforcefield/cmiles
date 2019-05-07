@@ -285,7 +285,6 @@ def has_stereo_defined(molecule):
     -------
 
     """
-
     unspec_chiral = False
     unspec_db = False
     problematic_atoms = list()
@@ -308,7 +307,7 @@ def has_stereo_defined(molecule):
         atom_id = center[0]
         if center[-1] == '?':
             unspec_chiral = True
-            problematic_atoms.append((atom_id, molecule.GetAtomWithIdx(atom_id).GetSmarts()))
+            problematic_atoms.append((atom_id, mol_copy.GetAtomWithIdx(atom_id).GetSmarts()))
 
     # Find potential stereo bonds that are unspecified
     Chem.FindPotentialStereoBonds(mol_copy)

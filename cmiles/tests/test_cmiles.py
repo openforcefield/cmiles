@@ -43,6 +43,9 @@ def smiles_input():
         "c1ccc2c(c1)cccc2O",
         "CC[N+]#C",
         "Cc1ccccc1",
+        "CC1=C(C(=O)C2=C(C1=O)[N@@]3C[C@H]4[C@@H]([C@@]3([C@@H]2COC(=O)N)OC)N4)N",
+        "C1[C@H]2N1C(=O)N=C2N",
+        "[H][C@@]1(C)C[N@@]1C1=CC(=O)C2=C(C(CO)=C(N2C)C2=CC=CC=C2)C1=O"
     ])
 
 @pytest.fixture
@@ -108,7 +111,10 @@ def oe_map_expected():
              '[H:12][c:1]1[c:2]([c:4]([c:6]2[c:5]([c:3]1[H:14])[C:7](=[C:8]([C:10]([C:9]2=[O:11])([H:18])[H:19])[H:17])[H:16])[H:15])[H:13]',
              '[H:12][c:1]1[c:2]([c:5]([c:9]2[c:8]([c:4]1[H:15])[c:6]([c:3]([c:7]([c:10]2[O:11][H:19])[H:18])[H:14])[H:17])[H:16])[H:13]',
              '[H:5][C:1]#[N+:4][C:3]([H:9])([H:10])[C:2]([H:6])([H:7])[H:8]',
-             '[H:8][c:1]1[c:2]([c:4]([c:6]([c:5]([c:3]1[H:10])[H:12])[C:7]([H:13])([H:14])[H:15])[H:11])[H:9]'])
+             '[H:8][c:1]1[c:2]([c:4]([c:6]([c:5]([c:3]1[H:10])[H:12])[C:7]([H:13])([H:14])[H:15])[H:11])[H:9]',
+             '[H:27][C@:9]1([C:1]2=[C:3]([C:6](=[O:21])[C:2](=[C:4]([C:5]2=[O:20])[N:18]([H:39])[H:40])[C:13]([H:30])([H:31])[H:32])[N@:17]3[C@@:12]1([C@@:11]4([C@:10]([C:8]3([H:25])[H:26])([N:16]4[H:38])[H:28])[H:29])[O:24][C:14]([H:33])([H:34])[H:35])[C:15]([H:36])([H:37])[O:23][C:7](=[O:22])[N:19]([H:41])[H:42]',
+             '[H:11][C@@:4]12[C:1](=[N:5][C:2](=[O:8])[N:6]1[C:3]2([H:9])[H:10])[N:7]([H:12])[H:13]',
+             '[H:25][c:1]1[c:2]([c:4]([c:6]([c:5]([c:3]1[H:27])[H:29])[c:9]2[c:8]([c:7]3[c:10]([n:20]2[C:18]([H:37])([H:38])[H:39])[C:13](=[O:23])[C:11](=[C:14]([C:12]3=[O:22])[N@@:21]4[C@:16]([C:15]4([H:31])[H:32])([H:33])[C:17]([H:34])([H:35])[H:36])[H:30])[C:19]([H:40])([H:41])[O:24][H:42])[H:28])[H:26]'])
 
 @pytest.fixture
 def oe_can_expected():
@@ -275,7 +281,7 @@ def test_initial_iso():
 
 
 @using_rdkit
-@pytest.mark.parametrize("input, output", get_smiles_lists(get_fn('drug_bank_stereo.smi'), get_fn('drug_bank_mapped_smi_rd.smi')))
+@pytest.mark.parametrize("input, output", get_smiles_lists(get_fn('drug_bank_stereo.smi'), get_fn('drug_bank_mapped_smi_rd_2019.03.1.smi')))
 def test_drug_bank_rd(input, output):
     """
 
@@ -313,7 +319,7 @@ def test_drug_bank_oe(input, output):
 
 
 @using_rdkit
-@pytest.mark.parametrize("input, output", get_smiles_lists(get_fn('drug_bank_sm.smi'), get_fn('drug_bank_inchi_rd.txt')))
+@pytest.mark.parametrize("input, output", get_smiles_lists(get_fn('drug_bank_stereo.smi'), get_fn('drug_bank_inchi_rd_2019.03.1.txt')))
 def test_inchi(input, output):
     """Check that inchis are the same"""
 
@@ -324,7 +330,7 @@ def test_inchi(input, output):
 
 
 @using_rdkit
-@pytest.mark.parametrize("input, output", get_smiles_lists(get_fn('drug_bank_sm.smi'), get_fn('drug_bank_inchikey_rd.txt')))
+@pytest.mark.parametrize("input, output", get_smiles_lists(get_fn('drug_bank_stereo.smi'), get_fn('drug_bank_inchikey_rd_2019.03.1.txt')))
 def test_inchi_key(input, output):
     """Check that inchi key is the same"""
 

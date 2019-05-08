@@ -1,19 +1,8 @@
 import cmiles
-from cmiles.tests import utils
 import rdkit
 version = rdkit.__version__
 print(version)
 # Regenerate with molecule names (makes it easier to search later)
-
-def get_smiles_list(f):
-    smiles = open(f, 'r').read().split('\n')[:-1]
-    names = []
-    for i in range(len(smiles)):
-        smiles_name = smiles[i].split(' ')
-        smiles[i] = smiles_name[0]
-        names.append(smiles_name[-1])
-    return smiles, names
-#smiles, name = get_smiles_list('drug_bank_stereo.smi')
 
 # Make sure to add SMILES to input smi file. RDKit expects that line there and just skips the first line
 mols = rdkit.Chem.SmilesMolSupplier('drug_bank_stereo.smi')

@@ -33,7 +33,10 @@ def mol_from_json(symbols, connectivity, geometry, permute_xyz=False):
     for bond in connectivity:
         a1 = molecule.GetAtom(oechem.OEHasAtomIdx(bond[0]))
         a2 = molecule.GetAtom(oechem.OEHasAtomIdx(bond[1]))
-        molecule.NewBond(a1, a2, bond[-1])
+        bond_order = bond[-1]
+        if not isinstance(bond_order, int) and not bond_order.is_integer():
+            raise ValueError("bond order must be a whole number. A bond order of 1.5 is not allowed")
+        molecule.NewBond(a1, a2, int(bond_order))
 
     # Add geometry
     if molecule.NumAtoms() != geometry.shape[0]/3:
@@ -48,7 +51,9 @@ def mol_from_json(symbols, connectivity, geometry, permute_xyz=False):
         molecule.SetData(geom_tag, True)
     oechem.OEDetermineConnectivity(molecule)
     oechem.OEFindRingAtomsAndBonds(molecule)
-    oechem.OEPerceiveBondOrders(molecule)
+    # No need to perceive Bond Order because the information was added from the connectivity table. Apparently, this
+    # function does many different perceptions under the hood and it can add implicit hydrogens to divalent N that should be negatively charged.
+    #oechem.OEPerceiveBondOrders(molecule)
     # This seems to add hydrogens that are not in the json
     #oechem.OEAssignImplicitHydrogens(molecule)
     oechem.OEAssignFormalCharges(molecule)
@@ -274,7 +279,7 @@ def get_map_ordered_geometry(molecule, atom_map):
     if not molecule.GetDimension() == 3:
         raise RuntimeError("Molecule must have 3D coordinates for generating a QCSchema molecule")
 
-    if isinstance(molecule, oechem.OEMol):
+    if isinstance(molecule, oechem.OEMolBase):
         if molecule.GetMaxConfIdx() != 1:
             raise Warning("The molecule must have at least and at most 1 conformation")
 
@@ -370,9 +375,9 @@ def has_stereo_defined(molecule):
                 bond_order = bond.GetOrder()
                 problematic_bonds.append((a1_idx, a1_s, a2_idx, a2_s, bond_order))
     if unspec_chiral or unspec_db:
-        warnings.warn("Stereochemistry is unspecified. Problematic atoms {}, problematic bonds {}".format(
+        warnings.warn("Stereochemistry is unspecified. Problematic atoms {}, problematic bonds {}, SMILES: {}".format(
                 problematic_atoms,
-                problematic_bonds))
+                problematic_bonds, oechem.OEMolToSmiles(molecule)))
         return False
     else:
         return True

@@ -195,7 +195,6 @@ NC1=NC(=O)C2=C(N1)N(CCC(CO)CO)C=N2 Penciclovir
 NC[C@H]1CC[C@@H](CC1)C(O)=O Tranexamic Acid
 [H][C@]12[C@@H](C)C(S[C@]3([H])CN[C@@]([H])(C3)C(=O)NC3=CC=CC(=C3)C(O)=O)=C(N1C(=O)[C@]2([H])[C@@H](C)O)C(O)=O Ertapenem
 [H][C@@]12CC[C@@](O)(C#C)[C@@]1(CC)CC(=C)[C@]1([H])[C@@]3([H])CCCC=C3CC[C@@]21[H] Desogestrel
-CC1=C(C(=O)C2=C(C1=O)[N@@]3C[C@H]4[C@@H]([C@@]3([C@@H]2COC(=O)N)OC)N4)N Mitomycin
 [H]/C(=C\CC1(C(=O)NC(=O)NC1=O)[C@@H](C)CC)/[H] Talbutal
 CC1=CC2=C(C=C1C(=C)C1=CC=C(C=C1)C(O)=O)C(C)(C)CCC2(C)C Bexarotene
 CCCCCCC[N@](CC)CCC[C@@H](c1ccc(cc1)NS(=O)(=O)C)O Ibutilide
@@ -4500,7 +4499,6 @@ C[N+](C)([O-])CCNC1=CC=C(NCC[N+](C)(C)[O-])C2=C1C(=O)C1=C(O)C=CC(O)=C1C2=O Banox
 C[C@@H]1CC2=CC3=C(OCO3)C=C2C(=NN1C(C)=O)C1=CC=C(N)C=C1 Talampanel
 c1cn(c(=O)nc1N)[C@H]2C[C@@H]([C@H](O2)CO[P@@](=O)(O)O[P@@](=O)(O)O[P@@](=O)(O)O[P@@](=O)(O)OC[C@@H]3[C@H]([C@H]([C@@H](O3)n4ccc(=O)[nH]c4=O)O)O)O Denufosol
 N.[Cl-].[Cl-].[Pt+4].CC([O-])=O.CC([O-])=O.NC1CCCCC1 Satraplatin
-C1[C@H]2N1C(=O)N=C2N Imexon
 CCNC(=O)[C@H]1O[C@H]([C@H](O)[C@@H]1O)N1C=NC2=C1N=C(N=C2N)C#CC[C@H]1CC[C@@H](CC1)C(=O)OC Apadenoson
 CCCC[P@](=O)(CCCN)O SGS-742
 OCC1=C[C@]2([H])C(=O)[C@]3(C=C(C)[C@H](OC(=O)C(\C)=C/C)[C@@]3(O)[C@@H]1O)[C@H](C)C[C@@]1([H])C(C)(C)[C@@]21[H] Ingenol Mebutate
@@ -5434,7 +5432,6 @@ C[C@@](O)(C(O)=O)C1=CC=CC=C1 S-Atrolactic Acid
 C1CC1C1=NNC(NC2=CC=NC(NC3=CC4=C(NC=N4)C=C3)=N2)=C1 N~2~-1H-benzimidazol-5-yl-N~4~-(3-cyclopropyl-1H-pyrazol-5-yl)pyrimidine-2,4-diamine
 [H][C@@](CC1=CC=CC=C1)(NC(C)=O)C(O)(O)C(F)(F)F N-(1-BENZYL-3,3,3-TRIFLUORO-2,2-DIHYDROXY-PROPYL)-ACETAMIDE
 [H][C@]1(CCCCN1C(C)=O)C(O)=O 1-ACETYL-2-CARBOXYPIPERIDINE
-[H][C@@]1(C)C[N@@]1C1=CC(=O)C2=C(C(CO)=C(N2C)C2=CC=CC=C2)C1=O 3-(HYDROXYMETHYL)-1-METHYL-5-(2-METHYLAZIRIDIN-1-YL)-2-PHENYL-1H-INDOLE-4,7-DIONE
 CCCCS(=O)(=O)CCC(O)=O 3-(BUTYLSULPHONYL)-PROPANOIC ACID
 CCOC(=O)N1CCC(CC1)NC1=NC=CC(C)=C1 ETHYL 4-[(4-METHYLPYRIDIN-2-YL)AMINO]PIPERIDINE-1-CARBOXYLATE
 CC1=CC(N)=NC(CCNC(=O)C2=CC=C(C=C2)C#N)=C1 N-[2-(6-AMINO-4-METHYLPYRIDIN-2-YL)ETHYL]-4-CYANOBENZAMIDE

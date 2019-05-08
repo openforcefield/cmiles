@@ -30,7 +30,7 @@ def test_load_molecule(toolkit):
         assert oechem.OEMolToSmiles(mol) == 'CCCC'
     if toolkit == 'rdkit':
         from rdkit import Chem
-        assert Chem.MolToSmiles(mol) == 'CCCC'
+        assert Chem.MolToSmiles(mol) == '[H]C([H])([H])C([H])([H])C([H])([H])C([H])([H])[H]'
 
 
 @pytest.mark.parametrize('toolkit', toolkits_name)
@@ -162,30 +162,12 @@ def test_canonical_order_rd():
 @pytest.mark.parametrize('input, output', [('COC(C)c1c(Cl)ccc(F)c1Cl', False),
                                            ('C[C@@H](c1c(ccc(c1Cl)F)Cl)OC', False),
                                            ('O=O', True),
-                                           ('[CH3:1][CH2:3][CH2:4][CH3:2]', False)])
+                                           ('[CH3:1][CH2:3][CH2:4][CH3:2]', False),
+                                           ('[H]c1c(c(c(c(c1F)Cl)[C@]([H])(C([H])([H])[H])OC([H])([H])[H])Cl)[H]', True),
+                                           ('[C:1]([O:2][H:6])([H:3])([H:4])[H:5]', True)])
 def test_explicit_h(input, output, toolkit_name):
     """Test input SMILES for explicit H"""
     mol = utils.load_molecule(input, toolkit=toolkit_name)
-    assert utils.has_explicit_hydrogen(mol) == output
-
-
-@using_rdkit
-@pytest.mark.parametrize('input, output', [('[H]c1c(c(c(c(c1F)Cl)[C@]([H])(C([H])([H])[H])OC([H])([H])[H])Cl)[H]', False),
-                                           ('[C:1]([O:2][H:6])([H:3])([H:4])[H:5]', False)])
-def test_explicit_h_rd(input, output):
-    """Test input SMILES for explicit H"""
-
-    mol = utils.load_molecule(input, toolkit='rdkit')
-    assert utils.has_explicit_hydrogen(mol) == output
-
-
-@using_openeye
-@pytest.mark.parametrize('input, output', [('[H]c1c(c(c(c(c1F)Cl)[C@]([H])(C([H])([H])[H])OC([H])([H])[H])Cl)[H]', True),
-                                           ('[C:1]([O:2][H:6])([H:3])([H:4])[H:5]', True)])
-def test_explicit_h_oe(input, output):
-    """Test input SMILES for explicit H"""
-
-    mol = utils.load_molecule(input, toolkit='openeye')
     assert utils.has_explicit_hydrogen(mol) == output
 
 
@@ -430,3 +412,72 @@ def test_atom_order_in_mol_copy(toolkit, smiles):
             assert a1.GetIdx() == a2.GetIdx()
             assert a1.GetAtomMapNum() == a2.GetAtomMapNum()
             assert a1.GetSmarts() == a2.GetSmarts()
+
+@using_openeye
+def test_int_bond_order():
+    """Test bond orders are whole numbers"""
+    from openeye import oechem
+
+    hooh = {
+        'symbols': ['H', 'O', 'O', 'H'],
+        'geometry': [
+             1.84719633,  1.47046223,  0.80987166,
+             1.3126021,  -0.13023157, -0.0513322,
+            -1.31320906,  0.13130216, -0.05020593,
+            -1.83756335, -1.48745318,  0.80161212
+        ],
+        'name': 'HOOH',
+        'connectivity': [[0, 1, 1], [1, 2, 1], [2, 3, 1]],
+        'molecular_multiplicity': 1
+    }
+    mol = utils.load_molecule(hooh)
+    assert isinstance(mol, oechem.OEMol)
+
+    hooh['connectivity'] = [[0, 1, 1.0], [1, 2, 1.0], [2, 3, 1]]
+    mol = utils.load_molecule(hooh)
+    assert isinstance(mol, oechem.OEMol)
+
+    hooh['connectivity'] = [[0, 1, 1.0], [1, 2, 1.5], [2, 3, 1.0]]
+    with pytest.raises(ValueError):
+        utils.load_molecule(hooh)
+
+@using_openeye
+def test_n_valence():
+    from openeye import oechem
+    json_molecule = {'symbols':
+                     ['C', 'C', 'C', 'C', 'C', 'C', 'N', 'N', 'N', 'N', 'N', 'H', 'H', 'H', 'H'],
+                 'geometry': np.array([11.02088236, 0.30802536, 2.96687012,
+                              10.37270642, 2.8383686, 2.75522059,
+                              9.32012957, -1.48532476, 2.09948562,
+                              8.06346176, 3.48843435, 1.68941515,
+                              6.98820713, -0.772898, 1.02801107,
+                              5.21186447, -2.73065435, 0.12850138,
+                              5.70508328, -5.1797392, 0.28345893,
+                              6.45152507, 1.7536658, 0.86549457,
+                              2.97820833, -2.31491455, -0.90706852,
+                              3.71709131, -6.31357514, -0.68408084,
+                              2.05980154, -4.57124733, -1.40784597,
+                              12.76887939, -0.24566439, 3.77189345,
+                              11.61992628, 4.26322222, 3.39583795,
+                              9.76610505, -3.43174262, 2.23743576,
+                              7.53811768, 5.41217579, 1.50989122]),
+                 'connectivity': [[0, 1, 1],
+                                  [0, 2, 2],
+                                  [0, 11, 1],
+                                  [1, 3, 2],
+                                  [1, 12, 1],
+                                  [2, 4, 1],
+                                  [2, 13, 1],
+                                  [3, 7, 1],
+                                  [3, 14, 1],
+                                  [4, 5, 1],
+                                  [4, 7, 2],
+                                  [5, 6, 1],
+                                  [5, 8, 2],
+                                  [6, 9, 1],
+                                  [8, 10, 1],
+                                  [9, 10, 2]]
+                     }
+    mol = utils.load_molecule(json_molecule)
+    assert utils.has_explicit_hydrogen(mol)
+    assert oechem.OEMolToSmiles(mol) == 'c1ccnc(c1)c2[n-]nnn2'

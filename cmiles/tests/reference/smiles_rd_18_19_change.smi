@@ -1,0 +1,4 @@
+CC1=C(C(=O)C2=C(C1=O)[N@@]3C[C@H]4[C@@H]([C@@]3([C@@H]2COC(=O)N)OC)N4)N Mitomycin N in 3 membered ring has H which oe does not flag as stereogenic
+C1[C@H]2N1C(=O)N=C2N Imexon N is in a brigded 3 membered ring where I think stereo is implicitly defined by the C
+[H][C@@]1(C)C[N@@]1C1=CC(=O)C2=C(C(CO)=C(N2C)C2=CC=CC=C2)C1=O 3-(HYDROXYMETHYL)-1-METHYL-5-(2-METHYLAZIRIDIN-1-YL)-2-PHENYL-1H-INDOLE-4,7-DIONE rdkit ignores stereo information
+

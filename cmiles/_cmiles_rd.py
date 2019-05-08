@@ -274,6 +274,7 @@ def get_symbols(molecule):
 
 
 def has_stereo_defined(molecule):
+    #ToDo Fix this function for carbons with explicit hydrogen and imine with implicit hydrogens
     """
 
     Parameters
@@ -284,21 +285,33 @@ def has_stereo_defined(molecule):
     -------
 
     """
-
     unspec_chiral = False
     unspec_db = False
     problematic_atoms = list()
     problematic_bonds = list()
-    chiral_centers = Chem.FindMolChiralCenters(molecule, includeUnassigned=True)
+    # remove map indices and store. Then create molecule with SMILES without map indices and check for stereo on that.
+    # This step is needed because even when map indices are stored in the data of the atoms, it is used for assigning potential
+    # stereo centers. If a molecule does not have map indices but has data on the atoms, it will get flagged
+    had_atom_map = False
+    if has_atom_map(molecule):
+        had_atom_map = True
+        remove_atom_map(molecule)
+    a = Chem.rdmolfiles.SmilesParserParams()
+    a.removeHs = False
+    mol_copy = Chem.MolFromSmiles(Chem.MolToSmiles(molecule), a)
+    # restore map indices
+    if had_atom_map:
+        restore_atom_map(molecule)
+    chiral_centers = Chem.FindMolChiralCenters(mol_copy, includeUnassigned=True)
     for center in chiral_centers:
         atom_id = center[0]
         if center[-1] == '?':
             unspec_chiral = True
-            problematic_atoms.append((atom_id, molecule.GetAtomWithIdx(atom_id).GetSmarts()))
+            problematic_atoms.append((atom_id, mol_copy.GetAtomWithIdx(atom_id).GetSmarts()))
 
     # Find potential stereo bonds that are unspecified
-    Chem.FindPotentialStereoBonds(molecule)
-    for bond in molecule.GetBonds():
+    Chem.FindPotentialStereoBonds(mol_copy)
+    for bond in mol_copy.GetBonds():
         if bond.GetStereo() == Chem.BondStereo.STEREOANY:
             unspec_db = True
             problematic_bonds.append((bond.GetBeginAtom().GetSmarts(), bond.GetSmarts(),
@@ -398,8 +411,6 @@ def is_map_canonical(molecule):
     molcopy = copy.deepcopy(molecule)
     # reorder molcopy
     canonical_ordered_mol = canonical_order_atoms(molcopy)
-    # remove h. This is needed because explicit H are not added even when molecule is created from SMILES with explicit H
-    canonical_ordered_mol = Chem.RemoveHs(canonical_ordered_mol)
 
     # check that both mapped SMILES are equal
     smiles_1 = Chem.MolToSmiles(molecule, canonical=True)

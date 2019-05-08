@@ -72,7 +72,9 @@ def load_molecule(inp_molecule, toolkit='openeye', **kwargs):
             if not oechem.OESmilesToMol(molecule, inp_molecule):
                 raise ValueError("The supplied SMILES {} could not be parsed".format(inp_molecule))
         elif toolkit == 'rdkit' and has_rdkit:
-            molecule = Chem.MolFromSmiles(inp_molecule)
+            a = Chem.rdmolfiles.SmilesParserParams()
+            a.removeHs = False
+            molecule = Chem.MolFromSmiles(inp_molecule, a)
             if not molecule:
                 raise ValueError("The supplied SMILES {} could not be parsed".format(inp_molecule))
         else:
@@ -379,7 +381,7 @@ def is_map_canonical(molecule):
     return toolkit.is_map_canonical(molecule)
 
 
-def remove_atom_map(molecule, keep_map_data=True):
+def remove_atom_map(molecule, **kwargs):
     """
     Remove atom map from molecule
 
@@ -392,7 +394,7 @@ def remove_atom_map(molecule, keep_map_data=True):
 
     """
     toolkit = _set_toolkit(molecule)
-    toolkit.remove_atom_map(molecule)
+    toolkit.remove_atom_map(molecule, **kwargs)
 
 
 def restore_atom_map(molecule):
@@ -510,7 +512,7 @@ def _set_toolkit(molecule):
         either cmiles._cmiles_oe or cmiles._cmiles_rd
     """
 
-    if has_openeye and isinstance(molecule, (oechem.OEMol, oechem.OEMol, oechem.OEGraphMol, oechem.OEMolBase)):
+    if has_openeye and isinstance(molecule, oechem.OEMolBase):
         import cmiles._cmiles_oe as toolkit
     elif has_rdkit and isinstance(molecule, Chem.rdchem.Mol):
         import cmiles._cmiles_rd as toolkit

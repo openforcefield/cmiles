@@ -64,9 +64,9 @@ before_install:
 install:
   - |
     if [ $ENVIRON == "RDKIT" ]; then
-      conda env create -n test python=$PYTHON_VER -f devtools/conda-envs/rdkit-2018.yaml
+      conda env create -n test python=$PYTHON_VER -f devtools/conda-envs/rdkit-2019.yaml
     elif [ $ENVIRON == "OPENEYE" ]; then
-      conda env create -n test python=$PYTHON_VER -f devtools/conda-envs/openeye-2018.yaml
+      conda env create -n test python=$PYTHON_VER -f devtools/conda-envs/openeye-2019.yaml
     elif [ $ENVIRON == "CMILES" ]; then
       conda env create -n test python=$PYTHON_VER -f devtools/conda-envs/cmiles.yaml
     else

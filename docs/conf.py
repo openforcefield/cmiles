@@ -12,14 +12,14 @@
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 #
-# import os
-# import sys
-# sys.path.insert(0, os.path.abspath('.'))
+import os
+import sys
+sys.path.insert(0, os.path.abspath('.'))
 
 
 # -- Project information -----------------------------------------------------
 
-project = 'Generate canonical, isomeric, explicit hydrogen, mapped SMILES'
+project = 'Generate canonical identifiers for quantum chemistry database'
 copyright = "2018, Chaya D. Stern"
 author = 'Chaya D. Stern'
 
@@ -41,7 +41,11 @@ release = ''
 extensions = [
     'sphinx.ext.autodoc',
     'sphinx.ext.mathjax',
-]
+    'sphinx.ext.viewcode',
+    'numpydoc',
+    'sphinx.ext.autosummary',
+    'sphinx.ext.doctest',
+    'sphinx.ext.inheritance_diagram']
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
@@ -152,9 +156,18 @@ man_pages = [
 #  dir menu entry, description, category)
 texinfo_documents = [
     (master_doc, 'cmiles', 'cmiles Documentation',
-     author, 'cmiles', 'Generate canonical, isomeric, explicit hydrogen, mapped SMILES',
+     author, 'cmiles', 'Generate canonical molecular identifiers for quantum chemistry database',
      'Miscellaneous'),
 ]
 
 
 # -- Extension configuration -------------------------------------------------
+from mock import Mock as MagicMock
+
+class Mock(MagicMock):
+    @classmethod
+    def __getattr__(cls, name):
+        return MagicMock()
+
+MOCK_MODULES = ['numpy', 'rdkit', 'openeye']
+sys.modules.update((mod_name, Mock()) for mod_name in MOCK_MODULES)

@@ -4,7 +4,7 @@ channels:
   - openeye
 
 dependencies:
-  - openeye-toolkits=2018
+  - openeye-toolkits=2019
   - pytest
   - pytest-cov
   - numpy

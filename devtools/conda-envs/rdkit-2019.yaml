@@ -4,7 +4,7 @@ channels:
   - rdkit
 
 dependencies:
-  - rdkit=2018
+  - rdkit=2019
   - pytest
   - pytest-cov
   - numpy

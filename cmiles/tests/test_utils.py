@@ -430,3 +430,16 @@ def test_atom_order_in_mol_copy(toolkit, smiles):
             assert a1.GetIdx() == a2.GetIdx()
             assert a1.GetAtomMapNum() == a2.GetAtomMapNum()
             assert a1.GetSmarts() == a2.GetSmarts()
+
+
+@pytest.mark.parametrize('toolkit', toolkits_name)
+def test_canonical_label(toolkit):
+    """Test canonical label"""
+    if toolkit == 'openeye':
+        output = '[CH2:3]([CH2:4][OH:2])[OH:1]'
+    if toolkit == 'rdkit':
+        output = '[OH:1][CH2:3][CH2:4][OH:2]'
+    assert utils.to_canonical_label('[O:1]([C:3]([C:4]([O:2][H:6])([H:9])[H:10])([H:7])[H:8])[H:5]',
+                                    (0, 1, 2, 3), toolkit) == output
+    with pytest.raises(RuntimeError):
+        utils.to_canonical_label('OCCO', (0, 1, 2, 3), toolkit)

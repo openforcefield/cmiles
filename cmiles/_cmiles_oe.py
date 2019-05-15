@@ -174,6 +174,26 @@ def mol_to_smiles(molecule, isomeric=True, explicit_hydrogen=True, mapped=True):
 
     return oechem.OEMolToSmiles(molecule)
 
+def generate_index(mol, labeled_atoms):
+    """
+
+    Parameters
+    ----------
+    mapped_smiles :
+    labeled_atoms :
+
+    Returns
+    -------
+
+    """
+
+    for a in mol.GetAtoms():
+        if not a.GetMapIdx()-1 in labeled_atoms:
+            a.SetMapIdx(0)
+    for i, l in enumerate(labeled_atoms):
+        a = mol.GetAtom(oechem.OEHasMapIdx(l+1))
+        a.SetMapIdx(i + 1)
+    return oechem.OEMolToSmiles(mol)
 
 def get_connectivity_table(molecule, inverse_map):
     """

@@ -162,6 +162,28 @@ def mol_to_smiles(molecule, isomeric=True, explicit_hydrogen=True, mapped=True):
     smiles = Chem.MolToSmiles(molecule, allHsExplicit=explicit_hydrogen, isomericSmiles=isomeric, canonical=True)
     return smiles
 
+def generate_index(mol, labeled_atoms):
+    """
+
+    Parameters
+    ----------
+    mapped_smiles :
+    labeled_atoms :
+
+    Returns
+    -------
+
+    """
+    for a in mol.GetAtoms():
+        if not a.GetAtomMapNum()-1 in labeled_atoms:
+            a.SetAtomMapNum(0)
+
+    for a in mol.GetAtoms():
+        m = a.GetAtomMapNum() -1
+        if m in labeled_atoms:
+            i = labeled_atoms.index(m)
+            a.SetAtomMapNum(i+1)
+    return Chem.MolToSmiles(mol)
 
 def get_connectivity_table(molecule, inverse_map):
     """

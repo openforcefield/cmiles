@@ -181,17 +181,20 @@ def mol_to_smiles(molecule, isomeric=True, explicit_hydrogen=True, mapped=True):
 
 def generate_index(mol, labeled_atoms):
     """
+    Generate SMILES with labeled atoms
 
     Parameters
     ----------
-    mapped_smiles :
-    labeled_atoms :
+    mol : oechem.OEMol
+        Must have atom indices that correspond to labeled atoms
+    labeled_atoms : tuple of ints
+        ints should be -1 of atom map
 
     Returns
     -------
+    labeled SMILES
 
     """
-
     for a in mol.GetAtoms():
         if not a.GetMapIdx()-1 in labeled_atoms:
             a.SetMapIdx(0)

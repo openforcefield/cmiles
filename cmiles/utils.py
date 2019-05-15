@@ -169,6 +169,29 @@ def mol_to_smiles(molecule, **kwargs):
         remove_atom_map(molecule)
     return toolkit.mol_to_smiles(molecule, **kwargs)
 
+def to_canonical_label(mapped_smiles, labeled_atoms, toolkit='openeye'):
+    """
+    Generate human readable index with labeled torsions, angles, or bonds
+
+    Parameters
+    ----------
+    mapped_smiles : str
+        SMILES with map indices
+    labeled_atoms : tuple of int
+        ints should correspond to map indices -1 in mapped SMILES
+
+    Returns
+    -------
+    labeled SMILES
+
+    """
+
+    mol = load_molecule(mapped_smiles, toolkit=toolkit)
+    toolkit = _set_toolkit(mol)
+    if not has_atom_map(mol):
+        raise RuntimeError("SMILES must have map indices")
+    return toolkit.generate_index(mol, labeled_atoms)
+
 
 def mol_to_hill_molecular_formula(molecule):
     """

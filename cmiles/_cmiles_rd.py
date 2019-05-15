@@ -178,6 +178,8 @@ def generate_index(mol, labeled_atoms):
     labeled SMILES
 
     """
+    # Remove explicit H
+    mol = Chem.RemoveHs(mol)
     for a in mol.GetAtoms():
         if not a.GetAtomMapNum()-1 in labeled_atoms:
             a.SetAtomMapNum(0)

@@ -359,6 +359,8 @@ def has_stereo_defined(molecule):
 
     # perceive stereochemistry
     oechem.OEPerceiveChiral(molecule)
+    oechem.OE3DToAtomStereo(molecule)
+    oechem.OE3DToBondStereo(molecule)
 
     unspec_chiral = False
     unspec_db = False

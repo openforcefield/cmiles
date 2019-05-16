@@ -302,7 +302,7 @@ def get_map_ordered_geometry(molecule, atom_map):
     if not molecule.GetDimension() == 3:
         raise RuntimeError("Molecule must have 3D coordinates for generating a QCSchema molecule")
 
-    if isinstance(molecule, oechem.OEMolBase):
+    if isinstance(molecule, oechem.OEMol):
         if molecule.GetMaxConfIdx() != 1:
             raise Warning("The molecule must have at least and at most 1 conformation")
 

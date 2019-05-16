@@ -302,7 +302,7 @@ def get_map_ordered_geometry(molecule, atom_map):
     if not molecule.GetDimension() == 3:
         raise RuntimeError("Molecule must have 3D coordinates for generating a QCSchema molecule")
 
-    if isinstance(molecule, oechem.OEMolBase):
+    if isinstance(molecule, oechem.OEMol):
         if molecule.GetMaxConfIdx() != 1:
             raise Warning("The molecule must have at least and at most 1 conformation")
 
@@ -359,6 +359,8 @@ def has_stereo_defined(molecule):
 
     # perceive stereochemistry
     oechem.OEPerceiveChiral(molecule)
+    oechem.OE3DToAtomStereo(molecule)
+    oechem.OE3DToBondStereo(molecule)
 
     unspec_chiral = False
     unspec_db = False

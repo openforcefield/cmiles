@@ -435,6 +435,22 @@ def restore_atom_map(molecule):
     if not has_atom_map(molecule):
         warnings.warn("There were no atom maps in atom data to restore")
 
+def add_atom_map(molecule, **kwargs):
+    """
+    Add canonical ordered atom map to molecule
+    Parameters
+    ----------
+    molecule :
+        `oechem.OEMOl` or `rdkit.Chem.Mol`
+
+    Returns
+    -------
+    molecule with map indices
+
+    """
+    toolkit = _set_toolkit(molecule)
+    return toolkit.add_atom_map(molecule, **kwargs)
+
 
 def has_stereo_defined(molecule):
     """

@@ -494,3 +494,5 @@ def test_n_valence():
     assert utils.has_explicit_hydrogen(mol)
     assert oechem.OEMolToSmiles(mol) == 'c1ccnc(c1)c2[n-]nnn2'
 
+def test_add_atom_map():
+    pass

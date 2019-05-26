@@ -494,5 +494,13 @@ def test_n_valence():
     assert utils.has_explicit_hydrogen(mol)
     assert oechem.OEMolToSmiles(mol) == 'c1ccnc(c1)c2[n-]nnn2'
 
-def test_add_atom_map():
-    pass
+
+@pytest.mark.parametrize('toolkit', toolkits_name)
+def test_add_atom_map(toolkit):
+    smiles = 'CCCC'
+    mol = utils.load_molecule(smiles, toolkit=toolkit, strict=False)
+    mapped_mol = utils.add_atom_map(mol, in_place=False)
+    assert utils.has_atom_map(mapped_mol)
+    assert not utils.has_atom_map(mol)
+    assert not utils.is_missing_atom_map(mapped_mol)
+    assert utils.is_missing_atom_map(mol)

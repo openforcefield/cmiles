@@ -422,7 +422,7 @@ def restore_atom_map(molecule):
         if atom.HasProp('_map_idx'):
             atom.SetAtomMapNum(int(atom.GetProp('_map_idx')))
 
-def add_atom_map(molecule):
+def add_atom_map(molecule, in_place=True):
     """
 
     Parameters

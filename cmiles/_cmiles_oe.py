@@ -480,14 +480,15 @@ def restore_atom_map(molecule):
 
 def add_atom_map(molecule, in_place=True):
     """
-
+    Add canonical ordered atom maps to existing molecule
     Parameters
     ----------
-    molecule :
-    in_place :
+    molecule : oechem.OEMol
+    in_place : bool, optional, default True
 
     Returns
     -------
+    mapped OEMol if in_place is False
 
     """
     # First canonical order atoms

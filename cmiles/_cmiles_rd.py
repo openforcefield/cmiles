@@ -422,17 +422,18 @@ def restore_atom_map(molecule):
         if atom.HasProp('_map_idx'):
             atom.SetAtomMapNum(int(atom.GetProp('_map_idx')))
 
-def add_atom_map(molecule, in_place=True):
+def add_atom_map(molecule, in_place=False):
     """
+    Add canonical ordered atom map to existing molecule
 
     Parameters
     ----------
-    molecule :
-    in_place :
+    molecule : rdkit.Chem.Mol
+    in_place : bool, default False
 
     Returns
     -------
-
+    rdkit.Chem.Mol with atom map
     """
     # First canonical order atoms
     molecule =  canonical_order_atoms(molecule)

@@ -478,6 +478,29 @@ def restore_atom_map(molecule):
         if atom.HasData('MapIdx'):
             atom.SetMapIdx(atom.GetData('MapIdx'))
 
+def add_atom_map(molecule, in_place=True):
+    """
+    Add canonical ordered atom maps to existing molecule
+    Parameters
+    ----------
+    molecule : oechem.OEMol
+    in_place : bool, optional, default True
+
+    Returns
+    -------
+    mapped OEMol if in_place is False
+
+    """
+    # First canonical order atoms
+    if in_place:
+        canonical_order_atoms(molecule, in_place=in_place)
+    else:
+        molecule = canonical_order_atoms(molecule, in_place=in_place)
+
+    for atom in molecule.GetAtoms():
+        atom.SetMapIdx(atom.GetIdx() + 1)
+    if not in_place:
+        return molecule
 
 def is_map_canonical(molecule):
     """

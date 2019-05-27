@@ -154,6 +154,7 @@ def mol_to_smiles(molecule, isomeric=True, explicit_hydrogen=True, mapped=True):
     if mapped:
         if json_geometry:
             # keep original ordering
+            #ToDo this looks like a potential bug that only json_geometry gets atom maps
             for i in range(molecule.GetNumAtoms()):
                 molecule.GetAtomWithIdx(i).SetAtomMapNum(i+1)
         else:
@@ -420,6 +421,26 @@ def restore_atom_map(molecule):
     for atom in molecule.GetAtoms():
         if atom.HasProp('_map_idx'):
             atom.SetAtomMapNum(int(atom.GetProp('_map_idx')))
+
+def add_atom_map(molecule, in_place=False):
+    """
+    Add canonical ordered atom map to existing molecule
+
+    Parameters
+    ----------
+    molecule : rdkit.Chem.Mol
+    in_place : bool, default False
+
+    Returns
+    -------
+    rdkit.Chem.Mol with atom map
+    """
+    # First canonical order atoms
+    molecule =  canonical_order_atoms(molecule)
+
+    for i in range(molecule.GetNumAtoms()):
+        molecule.GetAtomWithIdx(i).SetAtomMapNum(i+1)
+    return molecule
 
 
 def is_map_canonical(molecule):

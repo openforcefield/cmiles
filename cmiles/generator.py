@@ -103,8 +103,9 @@ def get_molecule_ids(molecule_input, toolkit='openeye', strict=True, **kwargs):
 
     try:
         if kwargs['permute_xyz']:
-            permuted_json_mol = cmiles.utils.permute_qcschema(molecule_input, molecule_ids, toolkit=toolkit)
-            return permuted_json_mol
+            mapped_smiles = molecule_ids['canonical_isomeric_explicit_hydrogen_mapped_smiles']
+            permuted_json_mol = cmiles.utils.permute_qcschema(molecule_input, mapped_smiles, toolkit=toolkit)
+            return molecule_ids, permuted_json_mol
         else:
             return molecule_ids
 

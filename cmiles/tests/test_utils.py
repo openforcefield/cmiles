@@ -334,9 +334,10 @@ def test_permute_json(toolkit):
         'connectivity': [[0, 1, 1], [1, 2, 1], [2, 3, 1]],
         'molecular_multiplicity': 1
     }
+    mapped_smiles = molecule_ids['canonical_isomeric_explicit_hydrogen_mapped_smiles']
     mol = utils.mol_from_json(hooh, toolkit=toolkit)
     atom_map = utils.get_atom_map(mol, '[H:3][O:1][O:2][H:4]')
-    permuted_hooh = utils.permute_qcschema(hooh, molecule_ids, toolkit=toolkit)
+    permuted_hooh = utils.permute_qcschema(hooh, mapped_smiles, toolkit=toolkit)
 
     json_geom = np.asarray(hooh['geometry']).reshape(int(len(hooh['geometry'])/3), 3)
     permuted_geom = np.asarray(permuted_hooh['geometry']).reshape(int(len(hooh['geometry'])/3), 3)

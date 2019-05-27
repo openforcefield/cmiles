@@ -237,7 +237,7 @@ def mol_to_hill_molecular_formula(molecule):
     return "".join(hill_sorted)
 
 
-def mol_to_map_ordered_qcschema(molecule, molecule_ids, multiplicity=1, **kwargs):
+def mol_to_map_ordered_qcschema(molecule, mapped_smiles, multiplicity=1, **kwargs):
     """
     Genereate JSON serialize following `QCSchema specs <https://molssi-qc-schema.readthedocs.io/en/latest/index.html#>`_
 
@@ -260,7 +260,6 @@ def mol_to_map_ordered_qcschema(molecule, molecule_ids, multiplicity=1, **kwargs
 
     """
     toolkit = _set_toolkit(molecule)
-    mapped_smiles = molecule_ids['canonical_isomeric_explicit_hydrogen_mapped_smiles']
     atom_map = toolkit.get_atom_map(molecule, mapped_smiles, **kwargs)
 
     connectivity = get_connectivity_table(molecule, atom_map)
@@ -268,7 +267,7 @@ def mol_to_map_ordered_qcschema(molecule, molecule_ids, multiplicity=1, **kwargs
     charge = get_charge(molecule)
 
     qcschema_mol = {'symbols': symbols, 'geometry': geometry, 'connectivity': connectivity,
-                    'molecular_charge': charge, 'molecular_multiplicity': multiplicity, 'identifiers': molecule_ids}
+                    'molecular_charge': charge, 'molecular_multiplicity': multiplicity}
 
     return qcschema_mol
 

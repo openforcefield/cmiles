@@ -722,12 +722,12 @@ def test_permute_xyz(toolkit):
         'molecular_multiplicity': 1
     }
 
-    permuted_hooh = cmiles.get_molecule_ids(hooh, toolkit, permute_xyz=True)
+    mol_ids, permuted_hooh = cmiles.get_molecule_ids(hooh, toolkit, permute_xyz=True)
 
     assert hooh['geometry'] != permuted_hooh['geometry']
 
     mol = cmiles.utils.mol_from_json(hooh, toolkit=toolkit)
-    atom_map = cmiles.utils.get_atom_map(mol, permuted_hooh['identifiers']['canonical_isomeric_explicit_hydrogen_mapped_smiles'])
+    atom_map = cmiles.utils.get_atom_map(molecule=mol, mapped_smiles=mol_ids['canonical_isomeric_explicit_hydrogen_mapped_smiles'])
 
     json_geom = np.asarray(hooh['geometry']).reshape(int(len(hooh['geometry'])/3), 3)
     permuted_geom = np.asarray(permuted_hooh['geometry']).reshape(int(len(hooh['geometry'])/3), 3)

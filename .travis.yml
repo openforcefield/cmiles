@@ -82,7 +82,7 @@ before_script:
   - conda list
 
 script:
-  - pytest --cov=cmiles cmiles/tests/
+  - pytest -v --cov=cmiles cmiles/tests/
 
 notifications:
     email: false

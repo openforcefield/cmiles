@@ -1,11 +1,12 @@
 name: test
 
 channels:
-  - rdkit
+  - conda-forge
   - openeye
 
 dependencies:
-  - rdkit
+  - pip
+  - rdkit=2019
   - openeye-toolkits
   - pytest
   - pytest-cov

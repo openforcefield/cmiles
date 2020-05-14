@@ -97,7 +97,7 @@ jobs:
       run: |
         . devtools/gh-actions/initialize_conda.sh
         conda activate test
-        python -m pip install -e .
+        python -m pip install --no-deps .
     - name: Test the package
       shell: bash
       run: |

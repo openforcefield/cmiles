@@ -3,6 +3,9 @@ name: CI
 on:
   push:
   pull_request:
+    branches:
+      - "master"
+      - "maintenance/.+"
   schedule:
     # Nightly tests run on master by default:
     #   Scheduled workflows run on the latest commit on the default or base branch.
@@ -55,7 +58,7 @@ jobs:
         ulimit -a
     - name: Fix conda permissions in MacOS
       shell: bash
-      if: matrix.startsWith(matrix.cfg.os, 'macOS')
+      if: startsWith(matrix.cfg.os, 'macOS')
       run: |
         sudo chown -R $(id -u):$(id -g) ${CONDA}
     - name: Configure conda

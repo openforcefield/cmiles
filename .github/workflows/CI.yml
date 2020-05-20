@@ -32,13 +32,13 @@ jobs:
             rdkit: "true"
             openeye: "false"
 
-          - os: ubuntu-latest
-            rdkit: "false"
-            openeye: "true"
-
-          - os: ubuntu-latest
-            rdkit: "true"
-            openeye: "true"
+#         - os: ubuntu-latest
+#           rdkit: "false"
+#           openeye: "true"
+#
+#         - os: ubuntu-latest
+#           rdkit: "true"
+#           openeye: "true"
 
           - os: macOS-latest
             rdkit: "true"
@@ -83,7 +83,7 @@ jobs:
         echo "${ENC_OE_LICENSE}" > ${OE_LICENSE}
     - name: Setup conda environment
       uses: goanpeca/setup-miniconda@v1
-      if: ${{matrix.cfg.rdkit == 'TRUE' && matrix.cfg.openeye == 'TRUE' }}
+      if: ${{ matrix.cfg.rdkit == 'TRUE' && matrix.cfg.openeye == 'TRUE' }}
       with:
         activate-environment: test
         environment-file: devtools/conda-envs/cmiles.yaml
@@ -93,6 +93,10 @@ jobs:
       run: |
         conda info
         conda list
+    - name: Check OpenEye license
+      shell: bash -l {0}
+      if: ${{ matrix.cfg.openeye == 'TRUE' }}
+      run: |
         python -c "import openeye; assert openeye.OEChemIsLicensed()"
     - name: Install package
       shell: bash

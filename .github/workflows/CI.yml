@@ -83,7 +83,7 @@ jobs:
         echo "${ENC_OE_LICENSE}" > ${OE_LICENSE}
     - name: Setup conda environment
       uses: goanpeca/setup-miniconda@v1
-      if: {{matrix.cg.rdkit == 'TRUE' and matrix.cg.openeye == 'TRUE'}}
+      if: ${{matrix.cg.rdkit == 'TRUE' && matrix.cg.openeye == 'TRUE' }}
       with:
         activate-environment: test
         environment-file: devtools/conda-envs/cmiles.yaml

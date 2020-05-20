@@ -91,6 +91,7 @@ jobs:
     - name: Environment Information
       shell: bash -l {0}
       run: |
+        conda activate test
         conda info
         conda list
     - name: Check OpenEye license
@@ -99,14 +100,12 @@ jobs:
       run: |
         python -c "import openeye; assert openeye.OEChemIsLicensed()"
     - name: Install package
-      shell: bash
+      shell: bash -l {0}
       run: |
-        . devtools/gh-actions/initialize_conda.sh
         conda activate test
         python -m pip install --no-deps .
     - name: Test the package
-      shell: bash
+      shell: bash -l {0}
       run: |
-        . devtools/gh-actions/initialize_conda.sh
         conda activate test
         pytest -v --cov=cmiles cmiles/tests/

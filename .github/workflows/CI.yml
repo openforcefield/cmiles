@@ -96,10 +96,12 @@ jobs:
         echo $CONDA_YAML
     - name: Setup conda environment
       uses: goanpeca/setup-miniconda@v1
+      env:
+        CONDA_YAML: $CONDA_YAML
       with:
-         activate-environment: test
-         environment-file: $CONDA_YAML
-         auto-activate-base: false
+        activate-environment: test
+        environment-file: $CONDA_YAML
+        auto-activate-base: false
     - name: Environment Information
       shell: bash -l {0}
       run: |

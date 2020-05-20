@@ -84,7 +84,6 @@ jobs:
     - name: Specify conda YAML file
       shell: bash
       run: |
-        .
         if [[ "$RDKIT" == true && "$OPENEYE" == false ]]; then
             CONDA_YAML="devtools/conda-envs/rdkit-2019.yaml"
         elif [[ "$RDKIT" == false && "$OPENEYE" == true ]]; then

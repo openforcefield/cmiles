@@ -81,11 +81,25 @@ jobs:
         ENC_OE_LICENSE: ${{ secrets.OE_LICENSE__EXP_JUN2020 }}
       run: |
         echo "${ENC_OE_LICENSE}" > ${OE_LICENSE}
-    - name: Setup Conda Environment
+    - name: Specify conda YAML file
+      shell: bash
+      run: |
+        .
+        if [[ "$RDKIT" == true && "$OPENEYE" == false ]]; then
+            CONDA_YAML="devtools/conda-envs/rdkit-2019.yaml"
+        elif [[ "$RDKIT" == false && "$OPENEYE" == true ]]; then
+            CONDA_YAML="devtools/conda-envs/openeye-2019.yaml"
+        elif [[ "$RDKIT" == true && "$OPENEYE" == true ]]; then
+            CONDA_YAML="devtools/conda-envs/cmiles.yaml"
+        fi
+        echo $CONDA_YAML
+        echo '::set-env name=CONDA_YAML::$CONDA_YAML'
+        echo $CONDA_YAML
+    - name: Setup conda environment
       uses: goanpeca/setup-miniconda@v1
       with:
          activate-environment: test
-         environment-file: devtools/conda-envs/test_env.yaml
+         environment-file: $CONDA_YAML
          auto-activate-base: false
     - name: Environment Information
       shell: bash -l {0}

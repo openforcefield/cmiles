@@ -100,7 +100,7 @@ jobs:
         CONDA_YAML: $CONDA_YAML
       with:
         activate-environment: test
-        environment-file: $CONDA_YAML
+        environment-file: "$CONDA_YAML"
         auto-activate-base: false
     - name: Environment Information
       shell: bash -l {0}

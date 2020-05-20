@@ -93,7 +93,9 @@ jobs:
         elif [[ "$RDKIT" == true && "$OPENEYE" == true ]]; then
             CONDA_YAML="devtools/conda-envs/cmiles.yaml"
         fi
+        echo $CONDA_YAML
         python devtools/scripts/create_conda_env.py -n=test -p=$PYVER $CONDA_YAML
+        conda activate test
 
     - name: Install package
       shell: bash

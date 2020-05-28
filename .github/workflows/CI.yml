@@ -56,6 +56,7 @@ jobs:
     - uses: goanpeca/setup-miniconda@v1
 #      if: ${{ matrix.cfg.rdkit == 'TRUE' && matrix.cfg.openeye == 'FALSE' }}
       with:
+        python-version: ${{ matrix.python-version }}
         activate-environment: test
         environment-file: devtools/conda-envs/rdkit-2019.yaml
         auto-activate-base: false
@@ -65,11 +66,6 @@ jobs:
         uname -a
         df -h
         ulimit -a
-    - name: Fix conda permissions in MacOS
-      shell: bash
-      if: startsWith(matrix.cfg.os, 'macOS')
-      run: |
-        sudo chown -R $(id -u):$(id -g) ${CONDA}
     - name: Decrypt OpenEye license
       if: ${{ matrix.cfg.openeye == 'TRUE' }}
       shell: bash

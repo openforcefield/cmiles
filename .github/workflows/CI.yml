@@ -32,13 +32,13 @@ jobs:
             rdkit: "true"
             openeye: "false"
 
-#         - os: ubuntu-latest
-#           rdkit: "false"
-#           openeye: "true"
-#
-#         - os: ubuntu-latest
-#           rdkit: "true"
-#           openeye: "true"
+          - os: ubuntu-latest
+            rdkit: "false"
+            openeye: "true"
+
+          - os: ubuntu-latest
+            rdkit: "true"
+            openeye: "true"
 
           - os: macOS-latest
             rdkit: "true"

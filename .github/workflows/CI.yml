@@ -104,7 +104,7 @@ jobs:
     - name: Test the package
       shell: bash -l {0}
       run: |
-        pytest -v --cov=cmiles --cov-report=xml --cov-config=setup.cfg" cmiles/tests
+        pytest -v --cov=cmiles --cov-report=xml --cov-config=setup.cfg cmiles/tests
     - name: Codecov
       uses: codecov/codecov-action@v1
       with:

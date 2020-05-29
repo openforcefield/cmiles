@@ -54,11 +54,25 @@ jobs:
     steps:
     - uses: actions/checkout@v2
     - uses: goanpeca/setup-miniconda@v1
-#      if: ${{ matrix.cfg.rdkit == 'TRUE' && matrix.cfg.openeye == 'FALSE' }}
+      if: ${{ matrix.cfg.rdkit == 'TRUE' && matrix.cfg.openeye == 'FALSE' }}
       with:
         python-version: ${{ matrix.python-version }}
         activate-environment: test
         environment-file: devtools/conda-envs/rdkit-2019.yaml
+        auto-activate-base: false
+    - uses: goanpeca/setup-miniconda@v1
+      if: ${{ matrix.cfg.rdkit == 'FALSE' && matrix.cfg.openeye == 'TRUE' }}
+      with:
+        python-version: ${{ matrix.python-version }}
+        activate-environment: test
+        environment-file: devtools/conda-envs/openey-2019.yaml
+        auto-activate-base: false
+    - uses: goanpeca/setup-miniconda@v1
+      if: ${{ matrix.cfg.rdkit == 'TRUE' && matrix.cfg.openeye == 'TRUE' }}
+      with:
+        python-version: ${{ matrix.python-version }}
+        activate-environment: test
+        environment-file: devtools/conda-envs/cmiles.yaml
         auto-activate-base: false
     - name: Additional info about the build
       shell: bash
@@ -90,4 +104,9 @@ jobs:
     - name: Test the package
       shell: bash -l {0}
       run: |
-        pytest -v --cov=cmiles cmiles/tests/
+        pytest -v --cov=cmiles --cov-report=xml --cov-config=setup.cfg" cmiles/tests
+    - name: Codecov
+      uses: codecov/codecov-action@v1
+      with:
+        file: ./coverage.xml
+        fail_ci_if_error: true

@@ -1,7 +1,7 @@
 cmiles
 ==============================
 [//]: # (Badges)
-[![Travis Build Status](https://travis-ci.org/openforcefield/cmiles.png)](https://travis-ci.org/openforcefield/cmiles)
+[![CI Status](https://github.com/openforcefield/cmiles/workflows/CI/badge.svg)](https://github.com/openforcefield/cmiles/actions?query=branch%3Amaster+workflow%3ACI) 
 [![codecov](https://codecov.io/gh/openforcefield/cmiles/branch/master/graph/badge.svg)](https://codecov.io/gh/openforcefield/cmiles/branch/master)
 [![Documentation Status](https://readthedocs.org/projects/cmiles/badge/?version=latest)](https://cmiles.readthedocs.io/en/latest/?badge=latest)
 

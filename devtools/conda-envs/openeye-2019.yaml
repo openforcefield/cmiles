@@ -1,9 +1,11 @@
 name: test
 
 channels:
+  - conda-forge
   - openeye
 
 dependencies:
+  - pip
   - openeye-toolkits=2019
   - pytest
   - pytest-cov

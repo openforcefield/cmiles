@@ -1,9 +1,10 @@
 name: test
 
 channels:
-  - rdkit
+  - conda-forge
 
 dependencies:
+  - pip
   - rdkit=2019
   - pytest
   - pytest-cov

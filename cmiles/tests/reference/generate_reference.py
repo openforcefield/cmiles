@@ -5,7 +5,7 @@ print(version)
 # Regenerate with molecule names (makes it easier to search later)
 
 # Make sure to add SMILES to input smi file. RDKit expects that line there and just skips the first line
-mols = rdkit.Chem.SmilesMolSupplier('drug_bank_stereo.smi')
+mols = rdkit.Chem.SmilesMolSupplier('drug_bank_stereo.smi', titleLine=False)
 mapped_str = ''
 inchi_srt = ''
 inchi_key = ''

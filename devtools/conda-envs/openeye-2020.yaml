@@ -1,0 +1,15 @@
+name: test
+
+channels:
+  - conda-forge
+  - openeye
+
+dependencies:
+  - pip
+  - openeye-toolkits=2020
+  - pytest
+  - pytest-cov
+  - numpy
+
+  - pip:
+    - codecov

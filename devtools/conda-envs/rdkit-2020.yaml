@@ -1,0 +1,14 @@
+name: test
+
+channels:
+  - conda-forge
+
+dependencies:
+  - pip
+  - rdkit=2020
+  - pytest
+  - pytest-cov
+  - numpy
+
+  - pip:
+    - codecov

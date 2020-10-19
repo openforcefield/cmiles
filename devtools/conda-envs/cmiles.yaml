@@ -6,7 +6,7 @@ channels:
 
 dependencies:
   - pip
-  - rdkit=2019
+  - rdkit=2020
   - openeye-toolkits
   - pytest
   - pytest-cov

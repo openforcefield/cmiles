@@ -2,12 +2,10 @@ name: test
 
 channels:
   - conda-forge
-  - openeye
 
 dependencies:
   - pip
   - rdkit=2020
-  - openeye-toolkits
   - pytest
   - pytest-cov
   - numpy

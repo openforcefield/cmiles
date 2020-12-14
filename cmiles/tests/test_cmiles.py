@@ -281,7 +281,7 @@ def test_initial_iso():
 
 
 @using_rdkit
-@pytest.mark.parametrize("input, output", get_smiles_lists(get_fn('drug_bank_stereo.smi'), get_fn('drug_bank_mapped_smi_rd_2020.09.1.smi')))
+@pytest.mark.parametrize("input, output", get_smiles_lists(get_fn('drug_bank_stereo.smi'), get_fn('drug_bank_mapped_smi_rd_2020.09.3.smi')))
 def test_drug_bank_rd(input, output):
     """
 
@@ -319,7 +319,7 @@ def test_drug_bank_oe(input, output):
 
 
 @using_rdkit
-@pytest.mark.parametrize("input, output", get_smiles_lists(get_fn('drug_bank_stereo.smi'), get_fn('drug_bank_inchi_rd_2020.09.1.txt')))
+@pytest.mark.parametrize("input, output", get_smiles_lists(get_fn('drug_bank_stereo.smi'), get_fn('drug_bank_inchi_rd_2020.09.3.txt')))
 def test_inchi(input, output):
     """Check that inchis are the same"""
 
@@ -330,7 +330,7 @@ def test_inchi(input, output):
 
 
 @using_rdkit
-@pytest.mark.parametrize("input, output", get_smiles_lists(get_fn('drug_bank_stereo.smi'), get_fn('drug_bank_inchikey_rd_2020.09.1.txt')))
+@pytest.mark.parametrize("input, output", get_smiles_lists(get_fn('drug_bank_stereo.smi'), get_fn('drug_bank_inchikey_rd_2020.09.3.txt')))
 def test_inchi_key(input, output):
     """Check that inchi key is the same"""
 

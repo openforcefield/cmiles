@@ -5,7 +5,7 @@ channels:
 
 dependencies:
   - pip
-  - rdkit=2020
+  - rdkit=2020.09.3
   - pytest
   - pytest-cov
   - numpy

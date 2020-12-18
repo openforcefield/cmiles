@@ -135,6 +135,9 @@ def get_inchi_and_key(molecule):
         return
     if not isinstance(molecule, rd.Chem.Mol):
         molecule = rd.Chem.MolFromSmiles(oe.oechem.OEMolToSmiles(molecule))
+    if not molecule:
+        warnings.warn("RDKit could not pase SMILES. This molecule will not have InChI nor InChIKey")
+        return None
 
     inchi = rd.Chem.MolToInchi(molecule)
     inchi_key = rd.Chem.MolToInchiKey(molecule)
@@ -241,6 +244,9 @@ def standardize_tautomer(iso_can_smi):
         from rdkit.Chem import MolStandardize
     else:
         raise ImportError("Must have rdkit installed to use this function")
-
-    std_tautomer = MolStandardize.canonicalize_tautomer_smiles(iso_can_smi)
+    try:
+        std_tautomer = MolStandardize.canonicalize_tautomer_smiles(iso_can_smi)
+    except ValueError:
+        warnings.warn('RDKit could not sanitize molecule. This molecule will not have a standardized tautomer')
+        return None
     return std_tautomer

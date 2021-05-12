@@ -124,7 +124,7 @@ def mol_from_json(inp_molecule, toolkit='openeye', **kwargs):
 
     # convert to Angstrom.
     geometry = np.asarray(inp_molecule['geometry'], dtype=float)*BOHR_2_ANGSTROM
-    if len(symbols) != geometry.shape[0]/3:
+    if len(symbols) != geometry.shape[0]:
         raise ValueError("Number of atoms in molecule does not match length of position array")
 
     if toolkit == 'openeye' and has_openeye:

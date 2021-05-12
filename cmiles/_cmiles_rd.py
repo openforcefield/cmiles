@@ -26,7 +26,7 @@ def mol_from_json(symbols, connectivity, geometry, permute_xyz=False):
 
     _BO_DISPATCH_TABLE = {1: Chem.BondType.SINGLE, 2: Chem.BondType.DOUBLE, 3: Chem.BondType.TRIPLE}
 
-    geometry = geometry.reshape(int(len(geometry)/3), 3)
+    geometry = geometry.reshape((-1, 3))
     conformer = Chem.Conformer(len(symbols))
     has_geometry = True
 

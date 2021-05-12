@@ -39,10 +39,10 @@ def mol_from_json(symbols, connectivity, geometry, permute_xyz=False):
         molecule.NewBond(a1, a2, int(bond_order))
 
     # Add geometry
-    if molecule.NumAtoms() != geometry.shape[0]/3:
+    if molecule.NumAtoms() != geometry.shape[0]:
         raise ValueError("Number of atoms in molecule does not match length of position array")
 
-    molecule.SetCoords(oechem.OEFloatArray(geometry))
+    molecule.SetCoords(oechem.OEFloatArray(geometry.flatten()))
     molecule.SetDimension(3)
 
     if not permute_xyz:

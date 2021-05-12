@@ -107,7 +107,7 @@ jobs:
       run: |
         pytest -v --cov=cmiles --cov-report=xml --cov-config=setup.cfg cmiles/tests
     - name: Codecov
-      uses: codecov/codecov-action@v1
+      uses: codecov/codecov-action@v1.5.0
       with:
         file: ./coverage.xml
         fail_ci_if_error: true

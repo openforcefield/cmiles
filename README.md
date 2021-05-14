@@ -1,3 +1,16 @@
+## CMILES is no longer actively maintained
+
+As of May 2021, CMILES is no longer being actively maintained. Most of its essential functionality
+has been migrated to the [Open Force Field Toolkit](https://github.com/openforcefield/openff-toolkit/) 
+and [QCSubmit](https://github.com/openforcefield/openff-qcsubmit/) packages. 
+
+API points that handle former CMILES functions in these packages include:
+
+* [openff.toolkit.toplogy.Molecule.to_smiles](https://open-forcefield-toolkit.readthedocs.io/en/latest/api/generated/openff.toolkit.topology.Molecule.html#openff.toolkit.topology.Molecule.to_smiles) with the `mapped=True` keyword argument
+* [openff.toolkit.topology.Molecule.from_mapped_smiles](https://open-forcefield-toolkit.readthedocs.io/en/latest/api/generated/openff.toolkit.topology.Molecule.html#openff.toolkit.topology.Molecule.from_mapped_smiles)
+* [openff.toolkit.topology.Molecule.from_qcschema](https://open-forcefield-toolkit.readthedocs.io/en/latest/api/generated/openff.toolkit.topology.Molecule.html#openff.toolkit.topology.Molecule.from_qcschema)
+* And the [openff-qcsubmit dataset class](https://openforcefield.github.io/openff-qcsubmit/datasets/) 
+
 cmiles
 ==============================
 [//]: # (Badges)

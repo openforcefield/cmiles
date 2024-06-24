@@ -6,6 +6,8 @@ from rdkit import Chem
 from .utils import _symbols, ANGSROM_2_BOHR
 import warnings
 import copy
+from io import StringIO
+import sys
 
 
 def mol_from_json(symbols, connectivity, geometry, permute_xyz=False):
@@ -26,6 +28,8 @@ def mol_from_json(symbols, connectivity, geometry, permute_xyz=False):
 
     _BO_DISPATCH_TABLE = {1: Chem.BondType.SINGLE, 2: Chem.BondType.DOUBLE, 3: Chem.BondType.TRIPLE}
 
+    warns = []
+
     geometry = geometry.reshape(int(len(geometry)/3), 3)
     conformer = Chem.Conformer(len(symbols))
     has_geometry = True
@@ -43,10 +47,25 @@ def mol_from_json(symbols, connectivity, geometry, permute_xyz=False):
         em.AddBond(bond[0], bond[1], bond_type)
 
     molecule = em.GetMol()
+
     try:
+        Chem.WrapLogs()
+        sio = sys.stderr = StringIO()
         Chem.SanitizeMol(molecule)
-    except:
-        raise RuntimeError("Could not sanitize molecule")
+    except ValueError:
+        rdkit_error = sio.getvalue()
+        #warns.append(rdkit_error)
+        if 'Explicit valence for atom' in rdkit_error:
+            atom_idx = rdkit_error.split(' ')[8]
+            atom_sym = rdkit_error.split(' ')[9][0]
+            valence = rdkit_error.split(' ')[10][0]
+            if atom_sym == 'N' and valence == '4':
+                warnings.warn('Adding +1 formal charge to atom # {}, {}'.format(atom_idx, atom_sym))
+                warns.append(sio.getvalue())
+                atom = molecule.GetAtomWithIdx(int(atom_idx))
+                atom.SetFormalCharge(1)
+                Chem.SanitizeMol(molecule)
+
 
     # Add coordinates
     if has_geometry:
@@ -58,6 +77,8 @@ def mol_from_json(symbols, connectivity, geometry, permute_xyz=False):
             # Add a tag to keep current order
             molecule.SetProp("_json_geometry", '1')
 
+    for warn in warns:
+        print(warn)
     return molecule
 
 
